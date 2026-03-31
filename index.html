@@ -165,7 +165,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- TASKS -->
 <div id="tasks" class="section">
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
-    <button class="btn-add" onclick="openModal('task')">+ Add task</button>
+    <button class="btn-add" onclick="showTaskForm()">+ Add task</button>
   </div>
   <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;">
     <div class="card-title" style="color:var(--red);">Overdue</div>
@@ -351,28 +351,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="modal-task"><div class="modal-box">
-  <div class="modal-title">Add task</div>
   <label class="form-label">Task description</label>
-  <input id="t-name" placeholder="e.g. Check water troughs, Service sprayer">
-  <div class="field-row">
-    <div><label class="form-label">Due date</label><input id="t-date" type="date"></div>
-    <div><label class="form-label">Priority</label>
-      <select id="t-priority"><option>High</option><option>Medium</option><option>Low</option></select>
-    </div>
+  <input id="t-name" placeholder="e.g. Check water troughs, service sprayer" style="width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+    <div><label class="form-label">Due date</label><input id="t-date" type="date" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;"></div>
+    <div><label class="form-label">Priority</label><select id="t-priority" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;"><option>High</option><option>Medium</option><option>Low</option></select></div>
   </div>
-  <div class="field-row">
-    <div><label class="form-label">Category</label>
-      <select id="t-cat"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select>
-    </div>
-    <div><label class="form-label">Repeat</label>
-      <select id="t-repeat"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select>
-    </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+    <div><label class="form-label">Category</label><select id="t-cat" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select></div>
+    <div><label class="form-label">Repeat</label><select id="t-repeat" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select></div>
   </div>
   <label class="form-label">Notes</label>
-  <input id="t-notes" placeholder="Any additional details...">
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('task')">Cancel</button><button class="btn-primary" onclick="saveTask()">Save task</button></div>
-</div></div>
+  <input id="t-notes" placeholder="Additional details..." style="width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:12px;font-family:'DM Sans',sans-serif;outline:none;">
+  <div style="display:flex;gap:8px;">
+    <button class="btn-cancel" onclick="hideTaskForm()">Cancel</button>
+    <button class="btn-primary" onclick="saveTask()">Save task</button>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal-cattle"><div class="modal-box">
   <div class="modal-title">Add animal</div>
@@ -656,6 +651,14 @@ async function sendAI(){
 
 
 /* TASKS */
+function showTaskForm(){
+  const p=document.getElementById('task-form-panel');
+  if(p){p.style.display='block';window.scrollTo(0,p.offsetTop-70);}
+}
+function hideTaskForm(){
+  const p=document.getElementById('task-form-panel');
+  if(p)p.style.display='none';
+}
 function saveTask(){
   try{
     if(!db.tasks)db.tasks=[];
@@ -676,7 +679,7 @@ function saveTask(){
     };
     db.tasks.push(task);
     addActivity('Added task: '+name);
-    closeModal('task');
+    hideTaskForm();
     ['t-name','t-date','t-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     persist();renderTasks();updateDashboard();
   }catch(e){alert('Error saving task: '+e.message);}
