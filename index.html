@@ -657,26 +657,31 @@ async function sendAI(){
 
 /* TASKS */
 function saveTask(){
-  if(!db.tasks)db.tasks=[];
-  const name=document.getElementById('t-name').value.trim();
-  if(!name){alert('Please enter a task description.');return;}
-  const task={
-    id:Date.now().toString(),
-    name,
-    date:document.getElementById('t-date').value,
-    priority:document.getElementById('t-priority').value,
-    category:document.getElementById('t-cat').value,
-    repeat:document.getElementById('t-repeat').value,
-    notes:document.getElementById('t-notes').value,
-    done:false,
-    doneDate:null
-  };
-  db.tasks.push(task);
-  addActivity('Added task: '+name);
-  closeModal('task');
-  ['t-name','t-date','t-notes'].forEach(id=>document.getElementById(id).value='');
-  persist();renderTasks();updateDashboard();
+  try{
+    if(!db.tasks)db.tasks=[];
+    const nameEl=document.getElementById('t-name');
+    if(!nameEl){alert('Error: cannot find name field');return;}
+    const name=nameEl.value.trim();
+    if(!name){alert('Please enter a task description first.');return;}
+    const task={
+      id:Date.now().toString(),
+      name:name,
+      date:document.getElementById('t-date').value,
+      priority:document.getElementById('t-priority').value,
+      category:document.getElementById('t-cat').value,
+      repeat:document.getElementById('t-repeat').value,
+      notes:document.getElementById('t-notes').value,
+      done:false,
+      doneDate:null
+    };
+    db.tasks.push(task);
+    addActivity('Added task: '+name);
+    closeModal('task');
+    ['t-name','t-date','t-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    persist();renderTasks();updateDashboard();
+  }catch(e){alert('Error saving task: '+e.message);}
 }
+
 
 function completeTask(id){
   const task=db.tasks.find(t=>t.id===id);
