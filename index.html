@@ -57,7 +57,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .ai-you{background:var(--surface);border-radius:var(--radius);padding:9px 13px;margin-bottom:8px;font-size:14px;}
 .ai-you-label{font-size:11px;color:var(--text-muted);margin-bottom:3px;font-weight:500;}
 .ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.ai-chip{padding:5px 13px;font-size:12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;background:var(--surface);color:var(--text-muted);font-family:'DM Sans',sans-serif;transition:all .12s;}
+.ai-chip{padding:5px 13px;font-size:12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;background:var(--surface);color:var(--text-muted);font-family:'DM Sans',sans-serif;}
 .ai-chip:hover{border-color:var(--green);color:var(--green);background:var(--green-pale);}
 .ai-input-row{display:flex;gap:8px;margin-bottom:10px;}
 .ai-input-row input{flex:1;padding:9px 13px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;}
@@ -72,7 +72,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .empty{font-size:13px;color:var(--text-muted);padding:4px 0;}
 .weather-strip{background:var(--green);color:white;border-radius:var(--radius);padding:9px 13px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:6px;}
 .weather-strip a{color:rgba(255,255,255,.8);font-size:12px;text-decoration:none;}
-.weather-strip a:hover{color:white;}
 .fin-totals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem;}
 .fin-total-card{border-radius:var(--radius);padding:.9rem 1rem;}
 .fin-in{background:#d6ecd0;}.fin-out{background:#fcecea;}
@@ -80,8 +79,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .fin-in .fin-total-label{color:#2d5a27;}.fin-out .fin-total-label{color:#912e2e;}
 .fin-total-value{font-size:22px;font-family:'Lora',serif;}
 .fin-in .fin-total-value{color:#2d5a27;}.fin-out .fin-total-value{color:#912e2e;}
+.task-urgent{background:#fcecea;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;}
+.task-urgent .row-name{font-size:13px;}
 .setup-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;overflow-y:auto;}
 .setup-inner{max-width:460px;margin:0 auto;padding:2.5rem 1.25rem;}
+.done-btn{background:var(--green-pale);border:1px solid var(--green);color:var(--green);border-radius:var(--radius);padding:4px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;}
 @media(max-width:480px){.metric-grid{grid-template-columns:1fr 1fr;}.grid2{grid-template-columns:1fr;}.fin-totals{grid-template-columns:1fr 1fr;}.header-logo{font-size:14px;}}
 </style>
 </head>
@@ -91,38 +94,28 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="setup-screen" id="setup-screen">
   <div class="setup-inner">
     <div style="font-family:'Lora',serif;font-size:22px;color:var(--green);margin-bottom:6px;">Upper Assendon Farm Hub</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:1.75rem;">M J Hunt &amp; Son — connect cloud storage</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:1.75rem;">M J Hunt &amp; Son</div>
     <div class="card">
-      <div class="card-title">Supabase setup</div>
-      <p style="font-size:14px;color:var(--text-muted);line-height:1.65;margin-bottom:1rem;">Enter your Supabase project URL and anon key to sync your farm data across all devices.</p>
-      <div style="background:var(--green-pale);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;font-size:13px;color:var(--green);line-height:1.7;">
-        <strong style="display:block;margin-bottom:4px;">Find your keys:</strong>
-        1. Go to <a href="https://supabase.com" target="_blank" style="color:var(--green);font-weight:500;">supabase.com</a> and open your project<br>
-        2. Click <strong>Settings</strong> (cog icon) &rarr; <strong>API</strong><br>
-        3. Copy the <strong>Project URL</strong> and <strong>anon public</strong> key
-      </div>
+      <div class="card-title">Connect cloud storage</div>
+      <p style="font-size:14px;color:var(--text-muted);line-height:1.65;margin-bottom:1rem;">Enter your Supabase details to sync across all devices.</p>
       <label class="form-label">Project URL</label>
-      <input id="setup-url" type="text" placeholder="https://xxxxxxxxxxxx.supabase.co">
+      <input id="setup-url" type="text" placeholder="https://xxxx.supabase.co" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;">
       <label class="form-label">Anon public key</label>
-      <input id="setup-key" type="password" placeholder="eyJ...">
-      <div id="setup-error" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none;padding:8px 10px;background:#fcecea;border-radius:var(--radius);"></div>
-      <button class="btn-primary" id="setup-btn" onclick="connectSupabase()" style="width:100%;padding:11px;">Connect &amp; sync my data</button>
+      <input id="setup-key" type="password" placeholder="eyJ..." style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;font-family:monospace;">
+      <div id="setup-error" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none;padding:8px;background:#fcecea;border-radius:var(--radius);"></div>
+      <button class="btn-primary" id="setup-btn" onclick="connectSupabase()" style="width:100%;padding:11px;">Connect &amp; load my data</button>
       <div style="text-align:center;margin-top:12px;">
         <button onclick="useLocalOnly()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);font-family:'DM Sans',sans-serif;text-decoration:underline;">Use on this device only</button>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);text-align:center;line-height:1.6;margin-top:.5rem;">Your keys are stored on this device only. All transfers use HTTPS encryption.</p>
   </div>
 </div>
 
 <!-- HEADER -->
 <div class="header">
-  <div>
-    <div class="header-logo">Upper Assendon Farm Hub</div>
-    <div class="header-sub">M J Hunt &amp; Son</div>
-  </div>
+  <div><div class="header-logo">Upper Assendon Farm Hub</div><div class="header-sub">M J Hunt &amp; Son</div></div>
   <div style="display:flex;align-items:center;gap:8px;">
-    <div class="sync-pill" id="sync-pill"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Local</span></div>
+    <div class="sync-pill"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Local</span></div>
     <div style="font-size:11px;opacity:.7;" id="hdr-date"></div>
   </div>
 </div>
@@ -150,12 +143,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="metric-card"><div class="metric-label">Fields in crop</div><div class="metric-value" id="d-fields">0</div><div class="metric-sub" id="d-fields-sub">of 0 registered</div></div>
     <div class="metric-card"><div class="metric-label">Bills due (30d)</div><div class="metric-value" id="d-bills">£0</div><div class="metric-sub">outstanding</div></div>
     <div class="metric-card"><div class="metric-label">Invoices owed</div><div class="metric-value" id="d-invoices">£0</div><div class="metric-sub">to collect</div></div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;">
+    <div class="card-title" style="color:var(--red);">Needs attention today</div>
+    <div id="d-urgent"><div class="empty">Nothing urgent today.</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Upcoming reminders</div><div id="d-reminders"><div class="empty">No reminders yet.</div></div></div>
+    <div class="card"><div class="card-title">Recent activity</div><div id="d-activity"><div class="empty">No activity yet.</div></div></div>
+  </div>
+</div>
 
 <!-- TASKS -->
 <div id="tasks" class="section">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
-    <button class="btn-add" onclick="openModal('task')">+ Add task</button>
-  </div>
+  <button class="btn-add" onclick="openModal('task')" style="margin-bottom:1rem;">+ Add task</button>
   <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;">
     <div class="card-title" style="color:var(--red);">Overdue</div>
     <div id="tasks-overdue"><div class="empty">Nothing overdue.</div></div>
@@ -291,7 +292,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="card">
     <div class="card-title">Farm assistant</div>
     <div class="ai-box" id="ai-history">
-      <div class="ai-message">Hello — I'm your Upper Assendon Farm assistant. I know you run a mixed Wagyu cross beef and arable operation near Henley-on-Thames. Ask me anything — SFI options, finishing margins, rotation advice, compliance dates, Wagyu marketing. Here to help.</div>
+      <div class="ai-message">Hello — I'm your Upper Assendon Farm assistant. Ask me anything about your Wagyu cross beef and arable operation — SFI options, finishing margins, rotation advice, compliance dates, or efficiency ideas.</div>
     </div>
     <div class="ai-input-row">
       <input id="ai-input" type="text" placeholder="Ask anything about your farm..." onkeydown="if(event.key==='Enter')sendAI()">
@@ -319,194 +320,143 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div id="settings-disconnected" style="display:none;">
       <label class="form-label">Supabase Project URL</label>
-      <input id="settings-url" type="text" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px;">
+      <input id="settings-url" type="text" placeholder="https://xxxx.supabase.co" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;">
       <label class="form-label">Anon public key</label>
-      <input id="settings-key" type="password" placeholder="eyJ..." style="margin-bottom:10px;">
+      <input id="settings-key" type="password" placeholder="eyJ..." style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;">
       <button class="btn-primary" onclick="reconnectCloud()">Connect cloud sync</button>
     </div>
   </div>
   <div class="card">
     <div class="card-title">Data</div>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-mid);">
-      <div><div style="font-size:14px;font-weight:500;">Export backup</div><div style="font-size:12px;color:var(--text-muted);">Download all records as a JSON file</div></div>
+      <div><div style="font-size:14px;font-weight:500;">Export backup</div><div style="font-size:12px;color:var(--text-muted);">Download all records as JSON</div></div>
       <button class="btn-add" onclick="exportData()">Export</button>
     </div>
-    <div style="padding:10px 0;">
-      <div style="font-size:13px;color:var(--text-muted);">Last synced: <span id="last-synced-label">Never</span></div>
+    <div style="padding:10px 0;"><div style="font-size:13px;color:var(--text-muted);">Last synced: <span id="last-synced-label">Never</span></div></div>
+  </div>
+</div>
+
+</div><!-- end main -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-task">
+  <div class="modal-box">
+    <div class="modal-title">Add task</div>
+    <label class="form-label">Task description</label>
+    <input id="t-name" placeholder="e.g. Check water troughs, service sprayer">
+    <div class="field-row">
+      <div><label class="form-label">Due date</label><input id="t-date" type="date"></div>
+      <div><label class="form-label">Priority</label><select id="t-priority"><option>High</option><option>Medium</option><option>Low</option></select></div>
+    </div>
+    <div class="field-row">
+      <div><label class="form-label">Category</label><select id="t-cat"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select></div>
+      <div><label class="form-label">Repeat</label><select id="t-repeat"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select></div>
+    </div>
+    <label class="form-label">Notes</label>
+    <input id="t-notes" placeholder="Additional details...">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('task')">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save task</button>
     </div>
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-cattle">
+  <div class="modal-box">
+    <div class="modal-title">Add animal</div>
+    <div class="field-row"><div><label class="form-label">Ear tag</label><input id="c-tag" placeholder="UK283762..."></div><div><label class="form-label">Type</label><select id="c-type"><option>Breeding cow</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Calf</option></select></div></div>
+    <div class="field-row"><div><label class="form-label">Breed</label><input id="c-breed" placeholder="Wagyu cross"></div><div><label class="form-label">Date of birth</label><input id="c-dob" type="date"></div></div>
+    <label class="form-label">Notes</label><input id="c-notes" placeholder="e.g. in-calf, calved 15/03/26">
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('cattle')">Cancel</button><button class="btn-primary" onclick="saveCattle()">Save</button></div>
+  </div>
 </div>
 
-<!-- MODALS -->
-<div class="modal-overlay" id="modal-task"><div class="modal-box">
-  <div class="modal-title">Add task</div>
-  <label class="form-label">Task description</label>
-  <input id="t-name" placeholder="e.g. Check water troughs">
-  <div class="field-row">
-    <div><label class="form-label">Due date</label><input id="t-date" type="date"></div>
-    <div><label class="form-label">Priority</label><select id="t-priority"><option>High</option><option>Medium</option><option>Low</option></select></div>
+<div class="modal-overlay" id="modal-field">
+  <div class="modal-box">
+    <div class="modal-title">Add field</div>
+    <div class="field-row"><div><label class="form-label">Field name</label><input id="f-name" placeholder="Top Meadow"></div><div><label class="form-label">Area (ha)</label><input id="f-area" type="number" placeholder="0.0"></div></div>
+    <div class="field-row"><div><label class="form-label">Status</label><select id="f-status"><option>In crop</option><option>Grass</option><option>Fallow</option><option>Cover crop</option></select></div><div><label class="form-label">Current crop</label><input id="f-crop" placeholder="Winter wheat"></div></div>
+    <label class="form-label">Notes</label><input id="f-notes" placeholder="Soil type, drainage...">
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('field')">Cancel</button><button class="btn-primary" onclick="saveField()">Save</button></div>
   </div>
-  <div class="field-row">
-    <div><label class="form-label">Category</label><select id="t-cat"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select></div>
-    <div><label class="form-label">Repeat</label><select id="t-repeat"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select></div>
+</div>
+
+<div class="modal-overlay" id="modal-finance">
+  <div class="modal-box">
+    <div class="modal-title">Add invoice or bill</div>
+    <div class="field-row"><div><label class="form-label">Type</label><select id="fin-type"><option>Invoice (owed to me)</option><option>Bill (I owe)</option></select></div><div><label class="form-label">Amount (£)</label><input id="fin-amount" type="number" placeholder="0.00"></div></div>
+    <label class="form-label">Description</label><input id="fin-desc" placeholder="Cattle sales — Thame Market">
+    <div class="field-row"><div><label class="form-label">Due date</label><input id="fin-due" type="date"></div><div><label class="form-label">Status</label><select id="fin-status"><option>Outstanding</option><option>Paid</option></select></div></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('finance')">Cancel</button><button class="btn-primary" onclick="saveFinance()">Save</button></div>
   </div>
-  <label class="form-label">Notes</label>
-  <input id="t-notes" placeholder="Additional details...">
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('task')">Cancel</button><button class="btn-primary" onclick="saveTask()">Save task</button></div>
-</div></div>
+</div>
 
-
-<div class="modal-overlay" id="modal-cattle"><div class="modal-box">
-  <div class="modal-title">Add animal</div>
-  <div class="field-row"><div><label class="form-label">Ear tag</label><input id="c-tag" placeholder="UK283762..."></div><div><label class="form-label">Type</label><select id="c-type"><option>Breeding cow</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Calf</option></select></div></div>
-  <div class="field-row"><div><label class="form-label">Breed</label><input id="c-breed" placeholder="Wagyu cross"></div><div><label class="form-label">Date of birth</label><input id="c-dob" type="date"></div></div>
-  <label class="form-label">Notes</label><input id="c-notes" placeholder="e.g. in-calf, calved 15/03/26">
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('cattle')">Cancel</button><button class="btn-primary" onclick="saveCattle()">Save</button></div>
-</div></div>
-
-<div class="modal-overlay" id="modal-field"><div class="modal-box">
-  <div class="modal-title">Add field</div>
-  <div class="field-row"><div><label class="form-label">Field name</label><input id="f-name" placeholder="Top Meadow"></div><div><label class="form-label">Area (ha)</label><input id="f-area" type="number" placeholder="0.0"></div></div>
-  <div class="field-row"><div><label class="form-label">Status</label><select id="f-status"><option>In crop</option><option>Grass</option><option>Fallow</option><option>Cover crop</option></select></div><div><label class="form-label">Current crop</label><input id="f-crop" placeholder="Winter wheat"></div></div>
-  <label class="form-label">Notes</label><input id="f-notes" placeholder="Soil type, drainage...">
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('field')">Cancel</button><button class="btn-primary" onclick="saveField()">Save</button></div>
-</div></div>
-
-<div class="modal-overlay" id="modal-finance"><div class="modal-box">
-  <div class="modal-title">Add invoice or bill</div>
-  <div class="field-row"><div><label class="form-label">Type</label><select id="fin-type"><option>Invoice (owed to me)</option><option>Bill (I owe)</option></select></div><div><label class="form-label">Amount (£)</label><input id="fin-amount" type="number" placeholder="0.00"></div></div>
-  <label class="form-label">Description</label><input id="fin-desc" placeholder="Cattle sales — Thame Market">
-  <div class="field-row"><div><label class="form-label">Due date</label><input id="fin-due" type="date"></div><div><label class="form-label">Status</label><select id="fin-status"><option>Outstanding</option><option>Paid</option></select></div></div>
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('finance')">Cancel</button><button class="btn-primary" onclick="saveFinance()">Save</button></div>
-</div></div>
-
-<div class="modal-overlay" id="modal-scheme"><div class="modal-box">
-  <div class="modal-title">Add scheme date or reminder</div>
-  <label class="form-label">Name</label><input id="s-name" placeholder="Annual TB test, SFI claim window...">
-  <div class="field-row"><div><label class="form-label">Date</label><input id="s-date" type="date"></div><div><label class="form-label">Priority</label><select id="s-priority"><option>High priority</option><option>Medium priority</option><option>Low priority</option></select></div></div>
-  <label class="form-label">Notes</label><input id="s-notes" placeholder="Additional details...">
-  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('scheme')">Cancel</button><button class="btn-primary" onclick="saveScheme()">Save</button></div>
-</div></div>
+<div class="modal-overlay" id="modal-scheme">
+  <div class="modal-box">
+    <div class="modal-title">Add scheme date or reminder</div>
+    <label class="form-label">Name</label><input id="s-name" placeholder="Annual TB test, SFI claim window...">
+    <div class="field-row"><div><label class="form-label">Date</label><input id="s-date" type="date"></div><div><label class="form-label">Priority</label><select id="s-priority"><option>High priority</option><option>Medium priority</option><option>Low priority</option></select></div></div>
+    <label class="form-label">Notes</label><input id="s-notes" placeholder="Additional details...">
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('scheme')">Cancel</button><button class="btn-primary" onclick="saveScheme()">Save</button></div>
+  </div>
+</div>
 
 <script>
-const LS_KEY='uaf_hub_v3',LS_CFG='uaf_supa_v1';
-const ROW_ID='farmhub_main';
+const LS_KEY='uaf_v4', LS_CFG='uaf_supa_v1', ROW_ID='farmhub_main';
 let db={cattle:[],fields:[],finance:[],schemes:[],activity:[],tasks:[]};
-let cfg=null,syncTimer=null;
+let cfg=null, syncTimer=null;
 
 function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LS_KEY));if(d)db=d;}catch(e){}['cattle','fields','finance','schemes','activity','tasks'].forEach(k=>{if(!db[k])db[k]=[];});}
 function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function loadCfg(){try{cfg=JSON.parse(localStorage.getItem(LS_CFG));}catch(e){}}
 function saveCfg(){try{localStorage.setItem(LS_CFG,JSON.stringify(cfg));}catch(e){}}
+function setSyncStatus(state,label){document.getElementById('sync-dot').className='sync-dot'+(state?' '+state:'');document.getElementById('sync-label').textContent=label;}
 
-function setSyncStatus(state,label){
-  document.getElementById('sync-dot').className='sync-dot'+(state?' '+state:'');
-  document.getElementById('sync-label').textContent=label;
-}
-
-function supaHeaders(){
-  return{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Prefer':'resolution=merge-duplicates'};
-}
-
-async function supaGet(){
-  const res=await fetch(cfg.url+'/rest/v1/farmdata?id=eq.'+ROW_ID+'&select=data',{headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key}});
-  if(!res.ok) throw new Error(res.status);
-  const rows=await res.json();
-  return rows.length>0?rows[0].data:null;
-}
-
-async function supaPut(data){
-  const res=await fetch(cfg.url+'/rest/v1/farmdata',{
-    method:'POST',
-    headers:supaHeaders(),
-    body:JSON.stringify({id:ROW_ID,data,updated_at:new Date().toISOString()})
-  });
-  if(!res.ok){const t=await res.text();throw new Error(res.status+' '+t);}
-}
+function supaHeaders(){return{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Prefer':'resolution=merge-duplicates'};}
+async function supaGet(){const res=await fetch(cfg.url+'/rest/v1/farmdata?id=eq.'+ROW_ID+'&select=data',{headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key}});if(!res.ok)throw new Error(res.status);const rows=await res.json();return rows.length>0?rows[0].data:null;}
+async function supaPut(data){const res=await fetch(cfg.url+'/rest/v1/farmdata',{method:'POST',headers:supaHeaders(),body:JSON.stringify({id:ROW_ID,data,updated_at:new Date().toISOString()})});if(!res.ok){const t=await res.text();throw new Error(res.status+' '+t);}}
 
 async function syncNow(){
   if(!cfg)return;
   setSyncStatus('busy','Syncing...');
-  try{
-    await supaPut(db);
-    setSyncStatus('ok','Synced');
-    const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    const el=document.getElementById('last-synced-label');
-    if(el)el.textContent='Today at '+t;
-  }catch(e){setSyncStatus('err','Sync error — '+e.message);}
+  try{await supaPut(db);setSyncStatus('ok','Synced');const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});const el=document.getElementById('last-synced-label');if(el)el.textContent='Today at '+t;}
+  catch(e){setSyncStatus('err','Sync error');}
 }
-
-function scheduleSyncAfterChange(){
-  saveLocal();
-  if(!cfg)return;
-  if(syncTimer)clearTimeout(syncTimer);
-  syncTimer=setTimeout(syncNow,2500);
-}
+function scheduleSyncAfterChange(){saveLocal();if(!cfg)return;if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,2500);}
+function persist(){scheduleSyncAfterChange();}
 
 async function connectSupabase(){
   const url=document.getElementById('setup-url').value.trim().replace(/\/$/,'');
   const key=document.getElementById('setup-key').value.trim();
-  if(!url||!key)return showSetupErr('Please enter both your Project URL and anon key.');
-  const btn=document.getElementById('setup-btn');
-  btn.textContent='Connecting...';btn.disabled=true;
+  if(!url||!key)return showSetupErr('Please enter both fields.');
+  const btn=document.getElementById('setup-btn');btn.textContent='Connecting...';btn.disabled=true;
   document.getElementById('setup-error').style.display='none';
   cfg={url,key};
   try{
     const existing=await supaGet();
-    if(existing&&existing.cattle&&existing.cattle.length>0){
-      db=existing;saveLocal();
-    } else {
-      await supaPut(db);
-    }
-    saveCfg();hideSetup();
-    setSyncStatus('ok','Synced');
-    renderAll();updateDashboard();updateSettingsPanel();
-  }catch(e){
-    cfg=null;
-    showSetupErr('Could not connect. Please check your URL and anon key. ('+e.message+')');
-    btn.textContent='Connect & sync my data';btn.disabled=false;
-  }
+    if(existing&&existing.cattle&&existing.cattle.length>0){db=existing;['cattle','fields','finance','schemes','activity','tasks'].forEach(k=>{if(!db[k])db[k]=[];});saveLocal();}
+    else{await supaPut(db);}
+    saveCfg();hideSetup();setSyncStatus('ok','Synced');renderAll();updateDashboard();updateSettingsPanel();
+  }catch(e){cfg=null;showSetupErr('Could not connect. Check your URL and key. ('+e.message+')');btn.textContent='Connect & load my data';btn.disabled=false;}
 }
-
 async function reconnectCloud(){
   const url=document.getElementById('settings-url').value.trim().replace(/\/$/,'');
   const key=document.getElementById('settings-key').value.trim();
   if(!url||!key)return alert('Please enter both fields.');
   cfg={url,key};
-  try{await supaPut(db);saveCfg();await syncNow();updateSettingsPanel();}
+  try{const existing=await supaGet();if(existing&&existing.cattle){db=existing;['cattle','fields','finance','schemes','activity','tasks'].forEach(k=>{if(!db[k])db[k]=[];});saveLocal();}saveCfg();await syncNow();renderAll();updateDashboard();updateSettingsPanel();}
   catch(e){cfg=null;alert('Could not connect: '+e.message);}
 }
-
-function disconnectCloud(){
-  if(!confirm('Disconnect cloud sync? Your data stays on this device.'))return;
-  cfg=null;localStorage.removeItem(LS_CFG);
-  setSyncStatus('','Local only');updateSettingsPanel();
-}
-
+function disconnectCloud(){if(!confirm('Disconnect cloud sync?'))return;cfg=null;localStorage.removeItem(LS_CFG);setSyncStatus('','Local only');updateSettingsPanel();}
 function useLocalOnly(){cfg=null;hideSetup();setSyncStatus('','Local only');renderAll();updateDashboard();updateSettingsPanel();}
 function showSetupErr(msg){const e=document.getElementById('setup-error');e.textContent=msg;e.style.display='block';}
 function hideSetup(){document.getElementById('setup-screen').style.display='none';}
-function showSetup(){document.getElementById('setup-screen').style.display='block';}
+function exportData(){const b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='UAF_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 
 function updateSettingsPanel(){
-  const info=document.getElementById('settings-sync-info');
-  const conn=document.getElementById('settings-connected');
-  const disc=document.getElementById('settings-disconnected');
-  if(cfg){
-    info.textContent='Cloud sync is active via Supabase. Your data syncs automatically across all devices.';
-    conn.style.display='flex';disc.style.display='none';
-  }else{
-    info.textContent='Cloud sync is not connected. Enter your Supabase details below to sync across devices.';
-    conn.style.display='none';disc.style.display='block';
-  }
-}
-
-function exportData(){
-  const b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download='UpperAssendonFarmHub_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  const conn=document.getElementById('settings-connected');const disc=document.getElementById('settings-disconnected');const info=document.getElementById('settings-sync-info');
+  if(cfg){info.textContent='Cloud sync active via Supabase. Data syncs automatically across all devices.';conn.style.display='flex';disc.style.display='none';}
+  else{info.textContent='Cloud sync not connected. Enter your Supabase details below.';conn.style.display='none';disc.style.display='block';}
 }
 
 function showSection(id,btn){
@@ -522,222 +472,206 @@ function closeModal(id){document.getElementById('modal-'+id).classList.remove('o
 function fmtDate(d){if(!d)return'';try{return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d;}}
 function fmtMoney(n){return'£'+parseFloat(n||0).toFixed(2);}
 function addActivity(msg){db.activity.unshift({msg,time:new Date().toLocaleDateString('en-GB')});if(db.activity.length>20)db.activity.pop();}
-function persist(){scheduleSyncAfterChange();}
 
-/* CATTLE */
-function clearAllCattle(){if(!db.cattle.length)return alert('No cattle to clear.');if(!confirm('Remove all '+db.cattle.length+' cattle records?'))return;db.cattle=[];addActivity('Cleared all cattle');persist();renderCattle();updateDashboard();}
-function handleCTSImport(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>parseCTSCSV(ev.target.result,f.name);r.readAsText(f);e.target.value='';}
-function parseCTSCSV(text,filename){
-  const breeds={'WA':'Wagyu','WAX':'Wagyu cross','WB':'Wagyu cross','AA':'Aberdeen Angus','AAX':'Aberdeen Angus cross','BA':'Belgian Blue','BAX':'Belgian Blue cross','CA':'Charolais','CAX':'Charolais cross','HE':'Hereford','HEX':'Hereford cross','LI':'Limousin','LIM':'Limousin','LX':'Limousin cross','LMX':'Limousin cross','SI':'Simmental','SIM':'Simmental','SX':'Simmental cross','FH':'Friesian Holstein','HF':'Holstein Friesian','HFX':'Holstein Friesian cross','FR':'Friesian','SL':'South Devon','DE':'Dexter','HH':'Highland','GA':'Galloway','SH':'Shorthorn','SP':'Speckle Park','MU':'Murray Grey','JE':'Jersey','GG':'Guernsey','AY':'Ayrshire'};
-  function pd(d){if(!d)return'';d=d.trim();const p=d.split(/[\/\-\.]/);if(p.length===3){if(p[2].length===4)return`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;if(p[0].length===4)return`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;}return d;}
-  function classify(sex,dob){const age=dob?Math.floor((new Date()-new Date(dob))/(365.25*24*60*60*1000)):99;if((sex||'').toUpperCase()==='M')return age<2?'Calf':'Bull';return age<1?'Calf':age<2?'Heifer':'Breeding cow';}
-  const lines=text.trim().split('\n').map(l=>l.trim()).filter(l=>l);
-  let imported=0,dups=0;
-  const existing=new Set(db.cattle.map(a=>a.tag.replace(/\s/g,'').toUpperCase()));
-  const newA=[];
-  for(const line of lines){
-    const c=line.split(',');if(c.length<4)continue;
-    if((c[1]||'').trim().toUpperCase()!=='A')continue;
-    const tag=(c[3]||'').trim();const bc=(c[4]||'').trim().toUpperCase();const sex=(c[5]||'').trim();const dobR=(c[6]||'').trim();const dam=(c[7]||'').trim();const sire=(c[9]||'').trim();
-    if(!tag||!tag.startsWith('UK'))continue;
-    const clean=tag.replace(/\s/g,'').toUpperCase();
-    if(existing.has(clean)){dups++;continue;}
-    existing.add(clean);
-    const dob=pd(dobR);const breed=breeds[bc]||bc;const type=classify(sex,dob);
-    const notes=[dam?'Dam: '+dam:'',sire?'Sire: '+sire:''].filter(Boolean).join(' · ');
-    newA.push({tag,type,breed,dob,notes,source:'CTS'});imported++;
-  }
-  db.cattle.push(...newA);addActivity('Imported '+imported+' animals from CTS');persist();renderCattle();updateDashboard();
-  let msg=`Imported ${imported} animal${imported!==1?'s':''} from ${filename}.`;
-  if(dups>0)msg+=` ${dups} already in records — skipped.`;
-  if(imported===0&&dups>0)msg='All animals already in your records.';
-  showImportResult(imported>0?'success':'warning',msg);
-}
-function showImportResult(type,msg){
-  const el=document.getElementById('import-result');
-  const c={success:{bg:'#d6ecd0',col:'#2d5a27'},warning:{bg:'#fdefd8',col:'#8a520e'}};
-  const s=c[type]||c.warning;el.style.display='block';el.style.background=s.bg;el.style.border='1px solid '+s.col+'44';
-  el.innerHTML='<div style="font-size:13px;color:'+s.col+';line-height:1.6;">'+msg+'</div>';
-  setTimeout(()=>{el.style.display='none';},9000);
-}
-function saveCattle(){
-  const tag=document.getElementById('c-tag').value.trim();if(!tag)return alert('Please enter an ear tag.');
-  db.cattle.push({tag,type:document.getElementById('c-type').value,breed:document.getElementById('c-breed').value,dob:document.getElementById('c-dob').value,notes:document.getElementById('c-notes').value});
-  addActivity('Added animal: '+tag);closeModal('cattle');['c-tag','c-breed','c-dob','c-notes'].forEach(id=>document.getElementById(id).value='');persist();renderCattle();updateDashboard();
-}
-function renderCattle(){
-  const el=document.getElementById('cattle-list');
-  const q=(document.getElementById('cattle-search')||{}).value?.toLowerCase()||'';
-  const filtered=db.cattle.filter(a=>!q||a.tag.toLowerCase().includes(q)||(a.breed||'').toLowerCase().includes(q)||a.type.toLowerCase().includes(q));
-  const cc=document.getElementById('cattle-count');if(cc)cc.textContent=db.cattle.length?(filtered.length<db.cattle.length?filtered.length+' of '+db.cattle.length+' shown':db.cattle.length+' animals'):'';
-  if(!db.cattle.length){el.innerHTML='<div class="empty">No animals yet.</div>';}
-  else if(!filtered.length){el.innerHTML='<div class="empty">No animals match your search.</div>';}
-  else el.innerHTML=filtered.map(a=>{const i=db.cattle.indexOf(a);const src=a.source==='CTS'?'<span class="badge bg-gray" style="font-size:10px;">CTS</span>':'';return`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.tag}${a.breed?' — '+a.breed:''}</div><div class="row-sub">${a.dob?'DOB: '+fmtDate(a.dob):''}${a.notes?(a.dob?' · ':'')+a.notes:''}</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">${src}<span class="badge ${a.type==='Bull'?'bg-amber':a.type==='Breeding cow'?'bg-green':'bg-blue'}">${a.type}</span><button onclick="deleteCattle(${i})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`;}).join('');
-  document.getElementById('ls-cows').textContent=db.cattle.filter(a=>a.type==='Breeding cow').length;
-  document.getElementById('ls-bulls').textContent=db.cattle.filter(a=>a.type==='Bull').length;
-  document.getElementById('ls-young').textContent=db.cattle.filter(a=>['Heifer','Steer','Calf'].includes(a.type)).length;
-}
-function deleteCattle(i){if(confirm('Remove this animal?')){db.cattle.splice(i,1);persist();renderCattle();updateDashboard();}}
-
-/* FIELDS */
-function saveField(){const name=document.getElementById('f-name').value.trim();if(!name)return alert('Please enter a field name.');db.fields.push({name,area:document.getElementById('f-area').value,status:document.getElementById('f-status').value,crop:document.getElementById('f-crop').value,notes:document.getElementById('f-notes').value});addActivity('Added field: '+name);closeModal('field');['f-name','f-area','f-crop','f-notes'].forEach(id=>document.getElementById(id).value='');persist();renderFields();updateDashboard();}
-function renderFields(){const el=document.getElementById('field-list');if(!db.fields.length){el.innerHTML='<div class="empty">No fields yet.</div>';return;}el.innerHTML=db.fields.map((f,i)=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">${f.name}${f.area?' <span style="font-weight:400;color:var(--text-muted);">('+f.area+' ha)</span>':''}</div><div class="row-sub">${f.crop||''}${f.notes?(f.crop?' · ':'')+f.notes:''}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="badge ${f.status==='In crop'?'bg-green':f.status==='Fallow'?'bg-gray':'bg-blue'}">${f.status}</span><button onclick="deleteField(${i})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`).join('');}
-function deleteField(i){if(confirm('Remove this field?')){db.fields.splice(i,1);persist();renderFields();updateDashboard();}}
-
-/* FINANCE */
-function saveFinance(){const amount=parseFloat(document.getElementById('fin-amount').value);const desc=document.getElementById('fin-desc').value.trim();if(!desc||isNaN(amount))return alert('Please enter description and amount.');db.finance.push({type:document.getElementById('fin-type').value,amount,desc,due:document.getElementById('fin-due').value,status:document.getElementById('fin-status').value});addActivity('Added finance: '+desc);closeModal('finance');['fin-amount','fin-desc','fin-due'].forEach(id=>document.getElementById(id).value='');persist();renderFinance();updateDashboard();}
-function renderFinance(){
-  const inv=db.finance.filter(f=>f.type.includes('Invoice'));const bil=db.finance.filter(f=>f.type.includes('Bill'));
-  document.getElementById('invoice-list').innerHTML=inv.length?inv.map(f=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">${f.desc}</div><div class="row-sub">${f.due?'Due: '+fmtDate(f.due):'No due date'}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">${fmtMoney(f.amount)}</div><span class="badge ${f.status==='Paid'?'bg-green':'bg-amber'}">${f.status}</span></div><button onclick="deleteFinance(${db.finance.indexOf(f)})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`).join(''):'<div class="empty">None yet.</div>';
-  document.getElementById('bills-list').innerHTML=bil.length?bil.map(f=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">${f.desc}</div><div class="row-sub">${f.due?'Due: '+fmtDate(f.due):'No due date'}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">${fmtMoney(f.amount)}</div><span class="badge ${f.status==='Paid'?'bg-green':'bg-red'}">${f.status}</span></div><button onclick="deleteFinance(${db.finance.indexOf(f)})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`).join(''):'<div class="empty">None yet.</div>';
-  document.getElementById('fin-in-total').textContent=fmtMoney(inv.filter(f=>f.status==='Outstanding').reduce((a,b)=>a+b.amount,0));
-  document.getElementById('fin-out-total').textContent=fmtMoney(bil.filter(f=>f.status==='Outstanding').reduce((a,b)=>a+b.amount,0));
-}
-function deleteFinance(i){if(confirm('Remove?')){db.finance.splice(i,1);persist();renderFinance();updateDashboard();}}
-
-/* SCHEMES */
-function saveScheme(){const name=document.getElementById('s-name').value.trim();if(!name)return alert('Please enter a name.');db.schemes.push({name,date:document.getElementById('s-date').value,priority:document.getElementById('s-priority').value,notes:document.getElementById('s-notes').value});addActivity('Added reminder: '+name);closeModal('scheme');['s-name','s-date','s-notes'].forEach(id=>document.getElementById(id).value='');persist();renderSchemes();updateDashboard();}
-function renderSchemes(){const el=document.getElementById('scheme-list');if(!db.schemes.length){el.innerHTML='<div class="empty">No dates added yet.</div>';return;}const sorted=[...db.schemes].map((s,i)=>({...s,_i:i})).sort((a,b)=>a.date<b.date?-1:1);el.innerHTML=sorted.map(s=>`<div class="row-item"><div style="display:flex;gap:8px;align-items:flex-start;width:100%;"><div class="dot ${s.priority==='High priority'?'dot-red':s.priority==='Medium priority'?'dot-amber':'dot-green'}" style="margin-top:5px;flex-shrink:0;"></div><div style="flex:1;min-width:0;"><div class="row-name">${s.name}</div><div class="row-sub">${s.date?fmtDate(s.date):'No date'}${s.notes?' · '+s.notes:''}</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><span class="badge ${s.priority==='High priority'?'bg-red':s.priority==='Medium priority'?'bg-amber':'bg-green'}">${s.priority.replace(' priority','')}</span><button onclick="deleteScheme(${s._i})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div></div>`).join('');}
-function deleteScheme(i){if(confirm('Remove?')){db.schemes.splice(i,1);persist();renderSchemes();updateDashboard();}}
-
-/* DASHBOARD */
-function updateDashboard(){
-  document.getElementById('d-cattle').textContent=db.cattle.length;
-  const inCrop=db.fields.filter(f=>f.status==='In crop').length;
-  document.getElementById('d-fields').textContent=inCrop;
-  document.getElementById('d-fields-sub').textContent='of '+db.fields.length+' registered';
-  const today=new Date();const in30=new Date();in30.setDate(today.getDate()+30);
-  document.getElementById('d-bills').textContent=fmtMoney(db.finance.filter(f=>f.type.includes('Bill')&&f.status==='Outstanding'&&f.due&&new Date(f.due+'T12:00:00')<=in30).reduce((a,b)=>a+b.amount,0));
-  document.getElementById('d-invoices').textContent=fmtMoney(db.finance.filter(f=>f.type.includes('Invoice')&&f.status==='Outstanding').reduce((a,b)=>a+b.amount,0));
-  const upcoming=[...db.schemes].filter(s=>s.date).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
-  document.getElementById('d-reminders').innerHTML=upcoming.length?upcoming.map(s=>`<div class="row-item"><div style="display:flex;gap:8px;align-items:flex-start;width:100%;"><div class="dot ${s.priority==='High priority'?'dot-red':s.priority==='Medium priority'?'dot-amber':'dot-green'}" style="flex-shrink:0;"></div><div><div class="row-name" style="font-size:13px;">${s.name}</div><div class="row-sub">${fmtDate(s.date)}</div></div></div></div>`).join(''):'<div class="empty">No reminders yet.</div>';
-  const urgEl=document.getElementById('d-tasks-urgent');
-  if(urgEl){
-    const todayD=new Date();todayD.setHours(0,0,0,0);
-    const in1=new Date(todayD);in1.setDate(todayD.getDate()+1);
-    const urgent=(db.tasks||[]).filter(t=>!t.done&&t.date&&new Date(t.date+'T12:00:00')<=in1);
-    urgEl.innerHTML=urgent.length?urgent.map(t=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="font-size:13px;">${t.name}</div><div class="row-sub">${t.date?fmtDate(t.date):''} · ${t.category}</div></div><button onclick="completeTask('${t.id}');updateDashboard();" style="background:var(--green-pale);border:1px solid var(--green);color:var(--green);border-radius:var(--radius);padding:3px 8px;font-size:12px;cursor:pointer;white-space:nowrap;">Done</button></div>`).join(''):'<div class="empty">Nothing urgent today.</div>';
-  }
-  document.getElementById('d-activity').innerHTML=db.activity.length?db.activity.slice(0,8).map(a=>`<div class="row-item"><div style="font-size:13px;color:var(--text);flex:1;">${a.msg}</div><div class="row-sub" style="white-space:nowrap;">${a.time}</div></div>`).join(''):'<div class="empty">No activity yet.</div>';
-}
-
-/* AI */
-function fillAI(t){document.getElementById('ai-input').value=t;sendAI();}
-async function sendAI(){
-  const inp=document.getElementById('ai-input');const msg=inp.value.trim();if(!msg)return;inp.value='';
-  const hist=document.getElementById('ai-history');
-  const you=document.createElement('div');you.className='ai-you';you.innerHTML='<div class="ai-you-label">You</div>'+msg;hist.appendChild(you);
-  const think=document.createElement('div');think.className='ai-message';think.style.cssText='color:var(--text-muted);font-style:italic;';think.textContent='Thinking...';hist.appendChild(think);hist.scrollTop=hist.scrollHeight;
-  try{
-    const ctx=`You are the farm management assistant for Upper Assendon Farm, M J Hunt & Son — a mixed Wagyu cross beef and arable farm near Henley-on-Thames, Chilterns, Oxfordshire, UK. Farm data: ${db.cattle.length} cattle (${db.cattle.filter(a=>a.type==='Breeding cow').length} cows, ${db.cattle.filter(a=>a.type==='Bull').length} bulls, ${db.cattle.filter(a=>a.type==='Heifer').length} heifers), ${db.fields.length} fields (${db.fields.filter(f=>f.status==='In crop').length} in crop). Wagyu cross and Aberdeen Angus cross focus. Friendly, expert, practical. UK farming — SFI, CS, BCMS/CTS, TB testing, AHDB, Red Tractor, Wagyu marketing. Concise, actionable, British English.`;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:ctx,messages:[{role:'user',content:msg}]})});
-    const data=await res.json();
-    const reply=(data.content||[]).map(c=>c.text||'').join('')||'Sorry, no response received.';
-    think.style.cssText='';think.innerHTML='<div class="ai-you-label" style="color:var(--green);">Farm assistant</div>'+reply.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
-  }catch(e){think.textContent='Could not connect. Please check your internet and try again.';}
-  hist.scrollTop=hist.scrollHeight;
-}
-
-
-/* TASKS */
-
+/* ---- TASKS ---- */
 function saveTask(){
-  try{
-    if(!db.tasks)db.tasks=[];
-    const nameEl=document.getElementById('t-name');
-    if(!nameEl){alert('Error: cannot find name field');return;}
-    const name=nameEl.value.trim();
-    if(!name){alert('Please enter a task description first.');return;}
-    const task={
-      id:Date.now().toString(),
-      name:name,
-      date:document.getElementById('t-date').value,
-      priority:document.getElementById('t-priority').value,
-      category:document.getElementById('t-cat').value,
-      repeat:document.getElementById('t-repeat').value,
-      notes:document.getElementById('t-notes').value,
-      done:false,
-      doneDate:null
-    };
-    db.tasks.push(task);
-    addActivity('Added task: '+name);
-    closeModal('task');
-    ['t-name','t-date','t-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    persist();renderTasks();updateDashboard();
-  }catch(e){alert('Error saving task: '+e.message);}
+  var name=document.getElementById('t-name').value;
+  name=name?name.trim():'';
+  if(name===''){alert('Please enter a task description.');return;}
+  if(!db.tasks)db.tasks=[];
+  var task={
+    id:String(Date.now()),
+    name:name,
+    date:document.getElementById('t-date').value,
+    priority:document.getElementById('t-priority').value,
+    category:document.getElementById('t-cat').value,
+    repeat:document.getElementById('t-repeat').value,
+    notes:document.getElementById('t-notes').value,
+    done:false,
+    doneDate:null
+  };
+  db.tasks.push(task);
+  addActivity('Added task: '+name);
+  closeModal('task');
+  document.getElementById('t-name').value='';
+  document.getElementById('t-date').value='';
+  document.getElementById('t-notes').value='';
+  persist();
+  renderTasks();
+  updateDashboard();
 }
-
 
 function completeTask(id){
-  const task=db.tasks.find(t=>t.id===id);
+  if(!db.tasks)return;
+  var task=null;
+  for(var i=0;i<db.tasks.length;i++){if(db.tasks[i].id===id){task=db.tasks[i];break;}}
   if(!task)return;
   if(task.repeat&&task.repeat!=='No repeat'&&task.date){
-    task.done=false;task.doneDate=null;
-    const d=new Date(task.date+'T12:00:00');
+    var d=new Date(task.date+'T12:00:00');
     if(task.repeat==='Daily')d.setDate(d.getDate()+1);
     else if(task.repeat==='Weekly')d.setDate(d.getDate()+7);
     else if(task.repeat==='Monthly')d.setMonth(d.getMonth()+1);
     else if(task.repeat==='Annually')d.setFullYear(d.getFullYear()+1);
     task.date=d.toISOString().slice(0,10);
     addActivity('Completed & rescheduled: '+task.name);
-  } else {
-    task.done=true;task.doneDate=new Date().toISOString().slice(0,10);
-    addActivity('Completed task: '+task.name);
+  }else{
+    task.done=true;
+    task.doneDate=new Date().toISOString().slice(0,10);
+    addActivity('Completed: '+task.name);
   }
   persist();renderTasks();updateDashboard();
 }
 
 function deleteTask(id){
   if(!confirm('Remove this task?'))return;
-  db.tasks=db.tasks.filter(t=>t.id!==id);
+  if(!db.tasks)return;
+  db.tasks=db.tasks.filter(function(t){return t.id!==id;});
   persist();renderTasks();updateDashboard();
 }
 
+function taskRow(t){
+  var catCol={Livestock:'bg-green',Crops:'bg-amber',Machinery:'bg-gray',Buildings:'bg-gray',Finance:'bg-blue',Compliance:'bg-red',General:'bg-gray'};
+  var rep=t.repeat&&t.repeat!=='No repeat'?' <span style="font-size:10px;color:var(--text-muted);">&#8635; '+t.repeat+'</span>':'';
+  return '<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+t.name+rep+'</div><div class="row-sub">'+(t.date?fmtDate(t.date):'No date')+(t.notes?' &middot; '+t.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><span class="badge '+(catCol[t.category]||'bg-gray')+'" style="font-size:10px;">'+t.category+'</span><button class="done-btn" onclick="completeTask(\''+t.id+'\')">Done</button><button class="del-btn" onclick="deleteTask(\''+t.id+'\')">&times;</button></div></div>';
+}
+
 function renderTasks(){
-  const today=new Date();today.setHours(0,0,0,0);
-  const in7=new Date(today);in7.setDate(today.getDate()+7);
-  const ago14=new Date(today);ago14.setDate(today.getDate()-14);
-
-  const active=db.tasks.filter(t=>!t.done);
-  const done=db.tasks.filter(t=>t.done&&t.doneDate&&new Date(t.doneDate+'T12:00:00')>=ago14);
-
-  const overdue=active.filter(t=>t.date&&new Date(t.date+'T12:00:00')<today);
-  const soon=active.filter(t=>t.date&&new Date(t.date+'T12:00:00')>=today&&new Date(t.date+'T12:00:00')<=in7);
-  const upcoming=active.filter(t=>!t.date||(new Date(t.date+'T12:00:00')>in7));
-
-  function taskRow(t){
-    const catColors={Livestock:'bg-green',Crops:'bg-amber',Machinery:'bg-gray',Buildings:'bg-gray',Finance:'bg-blue',Compliance:'bg-red',General:'bg-gray'};
-    const repIcon=t.repeat&&t.repeat!=='No repeat'?' <span style="font-size:10px;color:var(--text-muted);">&#8635; '+t.repeat+'</span>':'';
-    return `<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${t.name}${repIcon}</div><div class="row-sub">${t.date?fmtDate(t.date):''}${t.notes?' · '+t.notes:''}</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><span class="badge ${catColors[t.category]||'bg-gray'}" style="font-size:10px;">${t.category}</span><button onclick="completeTask('${t.id}')" style="background:var(--green-pale);border:1px solid var(--green);color:var(--green);border-radius:var(--radius);padding:3px 8px;font-size:12px;cursor:pointer;">Done</button><button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`;
-  }
-
-  const ovEl=document.getElementById('tasks-overdue');
-  const snEl=document.getElementById('tasks-soon');
-  const alEl=document.getElementById('tasks-all');
-  const dnEl=document.getElementById('tasks-done');
-
+  if(!db.tasks)db.tasks=[];
+  var today=new Date();today.setHours(0,0,0,0);
+  var in7=new Date(today);in7.setDate(today.getDate()+7);
+  var ago14=new Date(today);ago14.setDate(today.getDate()-14);
+  var active=db.tasks.filter(function(t){return!t.done;});
+  var done=db.tasks.filter(function(t){return t.done&&t.doneDate&&new Date(t.doneDate+'T12:00:00')>=ago14;});
+  var overdue=active.filter(function(t){return t.date&&new Date(t.date+'T12:00:00')<today;});
+  var soon=active.filter(function(t){return t.date&&new Date(t.date+'T12:00:00')>=today&&new Date(t.date+'T12:00:00')<=in7;});
+  var upcoming=active.filter(function(t){return!t.date||new Date(t.date+'T12:00:00')>in7;});
+  var ovEl=document.getElementById('tasks-overdue');
+  var snEl=document.getElementById('tasks-soon');
+  var alEl=document.getElementById('tasks-all');
+  var dnEl=document.getElementById('tasks-done');
   if(ovEl)ovEl.innerHTML=overdue.length?overdue.map(taskRow).join(''):'<div class="empty">Nothing overdue.</div>';
   if(snEl)snEl.innerHTML=soon.length?soon.map(taskRow).join(''):'<div class="empty">Nothing in next 7 days.</div>';
   if(alEl)alEl.innerHTML=upcoming.length?upcoming.map(taskRow).join(''):'<div class="empty">No further tasks.</div>';
-  if(dnEl)dnEl.innerHTML=done.length?done.map(t=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="text-decoration:line-through;color:var(--text-muted);font-size:13px;">${t.name}</div><div class="row-sub">Completed ${fmtDate(t.doneDate)}</div></div></div>`).join(''):'<div class="empty">No completed tasks yet.</div>';
+  if(dnEl)dnEl.innerHTML=done.length?done.map(function(t){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="text-decoration:line-through;color:var(--text-muted);font-size:13px;">'+t.name+'</div><div class="row-sub">Completed '+fmtDate(t.doneDate)+'</div></div></div>';}).join(''):'<div class="empty">No completed tasks yet.</div>';
+}
+
+/* ---- CATTLE ---- */
+function clearAllCattle(){if(!db.cattle.length)return alert('No cattle to clear.');if(!confirm('Remove all '+db.cattle.length+' cattle records?'))return;db.cattle=[];addActivity('Cleared all cattle');persist();renderCattle();updateDashboard();}
+function handleCTSImport(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){parseCTSCSV(ev.target.result,f.name);};r.readAsText(f);e.target.value='';}
+function parseCTSCSV(text,filename){
+  var breeds={'WA':'Wagyu','WAX':'Wagyu cross','AA':'Aberdeen Angus','AAX':'Aberdeen Angus cross','BA':'Belgian Blue','BAX':'Belgian Blue cross','CA':'Charolais','CAX':'Charolais cross','HE':'Hereford','HEX':'Hereford cross','LI':'Limousin','LIM':'Limousin','LX':'Limousin cross','SI':'Simmental','SIM':'Simmental','SX':'Simmental cross','FH':'Friesian Holstein','HF':'Holstein Friesian','FR':'Friesian','SL':'South Devon','DE':'Dexter','HH':'Highland','GA':'Galloway','SH':'Shorthorn','SP':'Speckle Park','MU':'Murray Grey','JE':'Jersey','GG':'Guernsey','AY':'Ayrshire'};
+  function pd(d){if(!d)return'';d=d.trim();var p=d.split(/[\/\-\.]/);if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');if(p[0].length===4)return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}return d;}
+  function classify(sex,dob){var age=dob?Math.floor((new Date()-new Date(dob))/(365.25*24*60*60*1000)):99;if((sex||'').toUpperCase()==='M')return age<2?'Calf':'Bull';return age<1?'Calf':age<2?'Heifer':'Breeding cow';}
+  var lines=text.trim().split('\n');var imported=0,dups=0;
+  var existing={};for(var i=0;i<db.cattle.length;i++){existing[db.cattle[i].tag.replace(/\s/g,'').toUpperCase()]=true;}
+  var newA=[];
+  for(var i=0;i<lines.length;i++){
+    var c=lines[i].trim().split(',');if(c.length<4)continue;
+    if((c[1]||'').trim().toUpperCase()!=='A')continue;
+    var tag=(c[3]||'').trim();var bc=(c[4]||'').trim().toUpperCase();var sex=(c[5]||'').trim();var dobR=(c[6]||'').trim();var dam=(c[7]||'').trim();var sire=(c[9]||'').trim();
+    if(!tag||!tag.startsWith('UK'))continue;
+    var clean=tag.replace(/\s/g,'').toUpperCase();
+    if(existing[clean]){dups++;continue;}existing[clean]=true;
+    var dob=pd(dobR);var breed=breeds[bc]||bc;var type=classify(sex,dob);
+    var notes=[dam?'Dam: '+dam:'',sire?'Sire: '+sire:''].filter(Boolean).join(' · ');
+    newA.push({tag:tag,type:type,breed:breed,dob:dob,notes:notes,source:'CTS'});imported++;
+  }
+  for(var i=0;i<newA.length;i++)db.cattle.push(newA[i]);
+  addActivity('Imported '+imported+' animals from CTS');persist();renderCattle();updateDashboard();
+  var msg='Imported '+imported+' animal'+(imported!==1?'s':'')+' from '+filename+'.';
+  if(dups>0)msg+=' '+dups+' already in records — skipped.';
+  showImportResult(imported>0?'success':'warning',msg);
+}
+function showImportResult(type,msg){var el=document.getElementById('import-result');var c=type==='success'?{bg:'#d6ecd0',col:'#2d5a27'}:{bg:'#fdefd8',col:'#8a520e'};el.style.display='block';el.style.background=c.bg;el.style.border='1px solid '+c.col+'44';el.innerHTML='<div style="font-size:13px;color:'+c.col+';line-height:1.6;">'+msg+'</div>';setTimeout(function(){el.style.display='none';},9000);}
+function saveCattle(){var tag=document.getElementById('c-tag').value.trim();if(!tag)return alert('Please enter an ear tag.');db.cattle.push({tag:tag,type:document.getElementById('c-type').value,breed:document.getElementById('c-breed').value,dob:document.getElementById('c-dob').value,notes:document.getElementById('c-notes').value});addActivity('Added animal: '+tag);closeModal('cattle');['c-tag','c-breed','c-dob','c-notes'].forEach(function(id){document.getElementById(id).value='';});persist();renderCattle();updateDashboard();}
+function renderCattle(){
+  var el=document.getElementById('cattle-list');var q=(document.getElementById('cattle-search')||{}).value;q=q?q.toLowerCase():'';
+  var filtered=db.cattle.filter(function(a){return!q||a.tag.toLowerCase().indexOf(q)>=0||(a.breed||'').toLowerCase().indexOf(q)>=0||a.type.toLowerCase().indexOf(q)>=0;});
+  var cc=document.getElementById('cattle-count');if(cc)cc.textContent=db.cattle.length?(filtered.length<db.cattle.length?filtered.length+' of '+db.cattle.length+' shown':db.cattle.length+' animals'):'';
+  if(!db.cattle.length){el.innerHTML='<div class="empty">No animals yet.</div>';}
+  else if(!filtered.length){el.innerHTML='<div class="empty">No animals match your search.</div>';}
+  else{el.innerHTML=filtered.map(function(a){var i=db.cattle.indexOf(a);var src=a.source==='CTS'?'<span class="badge bg-gray" style="font-size:10px;">CTS</span>':'';return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+a.tag+(a.breed?' — '+a.breed:'')+'</div><div class="row-sub">'+(a.dob?'DOB: '+fmtDate(a.dob):'')+(a.notes?(a.dob?' &middot; ':'')+a.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">'+src+'<span class="badge '+(a.type==='Bull'?'bg-amber':a.type==='Breeding cow'?'bg-green':'bg-blue')+'">'+a.type+'</span><button class="del-btn" onclick="deleteCattle('+i+')">&times;</button></div></div>';}).join('');}
+  document.getElementById('ls-cows').textContent=db.cattle.filter(function(a){return a.type==='Breeding cow';}).length;
+  document.getElementById('ls-bulls').textContent=db.cattle.filter(function(a){return a.type==='Bull';}).length;
+  document.getElementById('ls-young').textContent=db.cattle.filter(function(a){return a.type==='Heifer'||a.type==='Steer'||a.type==='Calf';}).length;
+}
+function deleteCattle(i){if(confirm('Remove this animal?')){db.cattle.splice(i,1);persist();renderCattle();updateDashboard();}}
+
+/* ---- FIELDS ---- */
+function saveField(){var name=document.getElementById('f-name').value.trim();if(!name)return alert('Please enter a field name.');db.fields.push({name:name,area:document.getElementById('f-area').value,status:document.getElementById('f-status').value,crop:document.getElementById('f-crop').value,notes:document.getElementById('f-notes').value});addActivity('Added field: '+name);closeModal('field');['f-name','f-area','f-crop','f-notes'].forEach(function(id){document.getElementById(id).value='';});persist();renderFields();updateDashboard();}
+function renderFields(){var el=document.getElementById('field-list');if(!db.fields.length){el.innerHTML='<div class="empty">No fields yet.</div>';return;}el.innerHTML=db.fields.map(function(f,i){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.name+(f.area?' <span style="font-weight:400;color:var(--text-muted);">('+f.area+' ha)</span>':'')+'</div><div class="row-sub">'+(f.crop||'')+(f.notes?(f.crop?' &middot; ':'')+f.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="badge '+(f.status==='In crop'?'bg-green':f.status==='Fallow'?'bg-gray':'bg-blue')+'">'+f.status+'</span><button class="del-btn" onclick="deleteField('+i+')">&times;</button></div></div>';}).join('');}
+function deleteField(i){if(confirm('Remove this field?')){db.fields.splice(i,1);persist();renderFields();updateDashboard();}}
+
+/* ---- FINANCE ---- */
+function saveFinance(){var amount=parseFloat(document.getElementById('fin-amount').value);var desc=document.getElementById('fin-desc').value.trim();if(!desc||isNaN(amount))return alert('Please enter description and amount.');db.finance.push({type:document.getElementById('fin-type').value,amount:amount,desc:desc,due:document.getElementById('fin-due').value,status:document.getElementById('fin-status').value});addActivity('Added finance: '+desc);closeModal('finance');['fin-amount','fin-desc','fin-due'].forEach(function(id){document.getElementById(id).value='';});persist();renderFinance();updateDashboard();}
+function renderFinance(){
+  var inv=db.finance.filter(function(f){return f.type.indexOf('Invoice')>=0;});
+  var bil=db.finance.filter(function(f){return f.type.indexOf('Bill')>=0;});
+  document.getElementById('invoice-list').innerHTML=inv.length?inv.map(function(f){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.desc+'</div><div class="row-sub">'+(f.due?'Due: '+fmtDate(f.due):'No due date')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">'+fmtMoney(f.amount)+'</div><span class="badge '+(f.status==='Paid'?'bg-green':'bg-amber')+'">'+f.status+'</span></div><button class="del-btn" onclick="deleteFinance('+db.finance.indexOf(f)+')">&times;</button></div></div>';}).join(''):'<div class="empty">None yet.</div>';
+  document.getElementById('bills-list').innerHTML=bil.length?bil.map(function(f){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.desc+'</div><div class="row-sub">'+(f.due?'Due: '+fmtDate(f.due):'No due date')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">'+fmtMoney(f.amount)+'</div><span class="badge '+(f.status==='Paid'?'bg-green':'bg-red')+'">'+f.status+'</span></div><button class="del-btn" onclick="deleteFinance('+db.finance.indexOf(f)+')">&times;</button></div></div>';}).join(''):'<div class="empty">None yet.</div>';
+  document.getElementById('fin-in-total').textContent=fmtMoney(inv.filter(function(f){return f.status==='Outstanding';}).reduce(function(a,b){return a+b.amount;},0));
+  document.getElementById('fin-out-total').textContent=fmtMoney(bil.filter(function(f){return f.status==='Outstanding';}).reduce(function(a,b){return a+b.amount;},0));
+}
+function deleteFinance(i){if(confirm('Remove?')){db.finance.splice(i,1);persist();renderFinance();updateDashboard();}}
+
+/* ---- SCHEMES ---- */
+function saveScheme(){var name=document.getElementById('s-name').value.trim();if(!name)return alert('Please enter a name.');db.schemes.push({name:name,date:document.getElementById('s-date').value,priority:document.getElementById('s-priority').value,notes:document.getElementById('s-notes').value});addActivity('Added reminder: '+name);closeModal('scheme');['s-name','s-date','s-notes'].forEach(function(id){document.getElementById(id).value='';});persist();renderSchemes();updateDashboard();}
+function renderSchemes(){var el=document.getElementById('scheme-list');if(!db.schemes.length){el.innerHTML='<div class="empty">No dates added yet.</div>';return;}var sorted=db.schemes.map(function(s,i){return Object.assign({},s,{_i:i});}).sort(function(a,b){return a.date<b.date?-1:1;});el.innerHTML=sorted.map(function(s){return'<div class="row-item"><div style="display:flex;gap:8px;align-items:flex-start;width:100%;"><div class="dot '+(s.priority==='High priority'?'dot-red':s.priority==='Medium priority'?'dot-amber':'dot-green')+'" style="margin-top:5px;flex-shrink:0;"></div><div style="flex:1;min-width:0;"><div class="row-name">'+s.name+'</div><div class="row-sub">'+(s.date?fmtDate(s.date):'No date')+(s.notes?' &middot; '+s.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><span class="badge '+(s.priority==='High priority'?'bg-red':s.priority==='Medium priority'?'bg-amber':'bg-green')+'">'+s.priority.replace(' priority','')+'</span><button class="del-btn" onclick="deleteScheme('+s._i+')">&times;</button></div></div></div>';}).join('');}
+function deleteScheme(i){if(confirm('Remove?')){db.schemes.splice(i,1);persist();renderSchemes();updateDashboard();}}
+
+/* ---- DASHBOARD ---- */
+function updateDashboard(){
+  document.getElementById('d-cattle').textContent=db.cattle.length;
+  var inCrop=db.fields.filter(function(f){return f.status==='In crop';}).length;
+  document.getElementById('d-fields').textContent=inCrop;
+  document.getElementById('d-fields-sub').textContent='of '+db.fields.length+' registered';
+  var today=new Date();var in30=new Date();in30.setDate(today.getDate()+30);
+  document.getElementById('d-bills').textContent=fmtMoney(db.finance.filter(function(f){return f.type.indexOf('Bill')>=0&&f.status==='Outstanding'&&f.due&&new Date(f.due+'T12:00:00')<=in30;}).reduce(function(a,b){return a+b.amount;},0));
+  document.getElementById('d-invoices').textContent=fmtMoney(db.finance.filter(function(f){return f.type.indexOf('Invoice')>=0&&f.status==='Outstanding';}).reduce(function(a,b){return a+b.amount;},0));
+  var upcoming=db.schemes.filter(function(s){return s.date;}).sort(function(a,b){return a.date<b.date?-1:1;}).slice(0,5);
+  document.getElementById('d-reminders').innerHTML=upcoming.length?upcoming.map(function(s){return'<div class="row-item"><div style="display:flex;gap:8px;align-items:flex-start;width:100%;"><div class="dot '+(s.priority==='High priority'?'dot-red':s.priority==='Medium priority'?'dot-amber':'dot-green')+'" style="flex-shrink:0;"></div><div><div class="row-name" style="font-size:13px;">'+s.name+'</div><div class="row-sub">'+fmtDate(s.date)+'</div></div></div></div>';}).join(''):'<div class="empty">No reminders yet.</div>';
+  document.getElementById('d-activity').innerHTML=db.activity.length?db.activity.slice(0,8).map(function(a){return'<div class="row-item"><div style="font-size:13px;color:var(--text);flex:1;">'+a.msg+'</div><div class="row-sub" style="white-space:nowrap;">'+a.time+'</div></div>';}).join(''):'<div class="empty">No activity yet.</div>';
+  if(!db.tasks)db.tasks=[];
+  var todayD=new Date();todayD.setHours(0,0,0,0);var in1=new Date(todayD);in1.setDate(todayD.getDate()+1);
+  var urgent=db.tasks.filter(function(t){return!t.done&&t.date&&new Date(t.date+'T12:00:00')<=in1;});
+  var urgEl=document.getElementById('d-urgent');
+  if(urgEl)urgEl.innerHTML=urgent.length?urgent.map(function(t){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="font-size:13px;">'+t.name+'</div><div class="row-sub">'+(t.date?fmtDate(t.date):'')+' &middot; '+t.category+'</div></div><button class="done-btn" onclick="completeTask(\''+t.id+'\');updateDashboard();">Done</button></div>';}).join(''):'<div class="empty">Nothing urgent today.</div>';
+}
+
+/* ---- AI ---- */
+function fillAI(t){document.getElementById('ai-input').value=t;sendAI();}
+function sendAI(){
+  var inp=document.getElementById('ai-input');var msg=inp.value.trim();if(!msg)return;inp.value='';
+  var hist=document.getElementById('ai-history');
+  var you=document.createElement('div');you.className='ai-you';you.innerHTML='<div class="ai-you-label">You</div>'+msg;hist.appendChild(you);
+  var think=document.createElement('div');think.className='ai-message';think.style.cssText='color:var(--text-muted);font-style:italic;';think.textContent='Thinking...';hist.appendChild(think);hist.scrollTop=hist.scrollHeight;
+  var ctx='You are the farm assistant for Upper Assendon Farm, M J Hunt & Son — mixed Wagyu cross beef and arable near Henley-on-Thames, Chilterns, Oxfordshire. Farm: '+db.cattle.length+' cattle, '+db.fields.length+' fields. Friendly, expert, practical. UK farming focus. Concise, actionable, British English.';
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:ctx,messages:[{role:'user',content:msg}]})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var reply=(data.content||[]).map(function(c){return c.text||'';}).join('')||'Sorry, no response received.';
+    think.style.cssText='';think.innerHTML='<div class="ai-you-label" style="color:var(--green);">Farm assistant</div>'+reply.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+    hist.scrollTop=hist.scrollHeight;
+  })
+  .catch(function(){think.textContent='Could not connect. Please check your internet and try again.';});
 }
 
 function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();renderTasks();updateDashboard();}
 
-/* INIT */
+/* ---- INIT ---- */
 loadLocal();loadCfg();
 document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');});});
 
 if(cfg){
   setSyncStatus('busy','Loading...');
-  supaGet().then(data=>{
-    if(data&&data.cattle){db=data;saveLocal();}
+  supaGet().then(function(data){
+    if(data&&data.cattle){db=data;['cattle','fields','finance','schemes','activity','tasks'].forEach(function(k){if(!db[k])db[k]=[];});saveLocal();}
     setSyncStatus('ok','Synced');renderAll();updateSettingsPanel();
-  }).catch(e=>{setSyncStatus('err','Sync error');renderAll();updateSettingsPanel();});
+  }).catch(function(){setSyncStatus('err','Sync error');renderAll();updateSettingsPanel();});
 }else{
-  const firstTime=!localStorage.getItem(LS_KEY);
-  if(firstTime){showSetup();}
+  var firstTime=!localStorage.getItem(LS_KEY);
+  if(firstTime){document.getElementById('setup-screen').style.display='block';}
   else{setSyncStatus('','Local only');renderAll();updateSettingsPanel();}
 }
 </script>
