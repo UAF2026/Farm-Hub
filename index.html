@@ -130,6 +130,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- NAV -->
 <div class="nav">
   <button class="nav-btn active" onclick="showSection('dashboard',this)">Dashboard</button>
+  <button class="nav-btn" onclick="showSection('tasks',this)">Tasks</button>
   <button class="nav-btn" onclick="showSection('livestock',this)">Livestock</button>
   <button class="nav-btn" onclick="showSection('crops',this)">Crops</button>
   <button class="nav-btn" onclick="showSection('finance',this)">Finance</button>
@@ -150,9 +151,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="metric-card"><div class="metric-label">Bills due (30d)</div><div class="metric-value" id="d-bills">£0</div><div class="metric-sub">outstanding</div></div>
     <div class="metric-card"><div class="metric-label">Invoices owed</div><div class="metric-value" id="d-invoices">£0</div><div class="metric-sub">to collect</div></div>
   </div>
+  <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;margin-bottom:1rem;">
+    <div class="card-title" style="color:var(--red);">Needs attention today</div>
+    <div id="d-tasks-urgent"><div class="empty">Nothing urgent.</div></div>
+  </div>
   <div class="grid2">
     <div class="card"><div class="card-title">Upcoming reminders</div><div id="d-reminders"><div class="empty">No reminders yet.</div></div></div>
     <div class="card"><div class="card-title">Recent activity</div><div id="d-activity"><div class="empty">No activity yet.</div></div></div>
+  </div>
+</div>
+
+
+<!-- TASKS -->
+<div id="tasks" class="section">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <button class="btn-add" onclick="openModal('task')">+ Add task</button>
+  </div>
+  <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;">
+    <div class="card-title" style="color:var(--red);">Overdue</div>
+    <div id="tasks-overdue"><div class="empty">Nothing overdue.</div></div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--amber);border-radius:0 var(--radius-lg) var(--radius-lg) 0;">
+    <div class="card-title" style="color:var(--amber);">Today &amp; next 7 days</div>
+    <div id="tasks-soon"><div class="empty">Nothing coming up.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">All upcoming tasks</div>
+    <div id="tasks-all"><div class="empty">No tasks added yet.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Completed (last 14 days)</div>
+    <div id="tasks-done"><div class="empty">No completed tasks yet.</div></div>
   </div>
 </div>
 
@@ -322,6 +351,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- MODALS -->
+<div class="modal-overlay" id="modal-task"><div class="modal-box">
+  <div class="modal-title">Add task</div>
+  <label class="form-label">Task description</label>
+  <input id="t-name" placeholder="e.g. Check water troughs, Service sprayer">
+  <div class="field-row">
+    <div><label class="form-label">Due date</label><input id="t-date" type="date"></div>
+    <div><label class="form-label">Priority</label>
+      <select id="t-priority"><option>High</option><option>Medium</option><option>Low</option></select>
+    </div>
+  </div>
+  <div class="field-row">
+    <div><label class="form-label">Category</label>
+      <select id="t-cat"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select>
+    </div>
+    <div><label class="form-label">Repeat</label>
+      <select id="t-repeat"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select>
+    </div>
+  </div>
+  <label class="form-label">Notes</label>
+  <input id="t-notes" placeholder="Any additional details...">
+  <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('task')">Cancel</button><button class="btn-primary" onclick="saveTask()">Save task</button></div>
+</div></div>
+
 <div class="modal-overlay" id="modal-cattle"><div class="modal-box">
   <div class="modal-title">Add animal</div>
   <div class="field-row"><div><label class="form-label">Ear tag</label><input id="c-tag" placeholder="UK283762..."></div><div><label class="form-label">Type</label><select id="c-type"><option>Breeding cow</option><option>Bull</option><option>Heifer</option><option>Steer</option><option>Calf</option></select></div></div>
@@ -357,10 +409,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <script>
 const LS_KEY='uaf_hub_v3',LS_CFG='uaf_supa_v1';
 const ROW_ID='farmhub_main';
-let db={cattle:[],fields:[],finance:[],schemes:[],activity:[]};
+let db={cattle:[],fields:[],finance:[],schemes:[],activity:[],tasks:[]};
 let cfg=null,syncTimer=null;
 
-function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LS_KEY));if(d)db=d;}catch(e){}['cattle','fields','finance','schemes','activity'].forEach(k=>{if(!db[k])db[k]=[];});}
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LS_KEY));if(d)db=d;}catch(e){}['cattle','fields','finance','schemes','activity','tasks'].forEach(k=>{if(!db[k])db[k]=[];});}
 function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function loadCfg(){try{cfg=JSON.parse(localStorage.getItem(LS_CFG));}catch(e){}}
 function saveCfg(){try{localStorage.setItem(LS_CFG,JSON.stringify(cfg));}catch(e){}}
@@ -575,6 +627,13 @@ function updateDashboard(){
   document.getElementById('d-invoices').textContent=fmtMoney(db.finance.filter(f=>f.type.includes('Invoice')&&f.status==='Outstanding').reduce((a,b)=>a+b.amount,0));
   const upcoming=[...db.schemes].filter(s=>s.date).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
   document.getElementById('d-reminders').innerHTML=upcoming.length?upcoming.map(s=>`<div class="row-item"><div style="display:flex;gap:8px;align-items:flex-start;width:100%;"><div class="dot ${s.priority==='High priority'?'dot-red':s.priority==='Medium priority'?'dot-amber':'dot-green'}" style="flex-shrink:0;"></div><div><div class="row-name" style="font-size:13px;">${s.name}</div><div class="row-sub">${fmtDate(s.date)}</div></div></div></div>`).join(''):'<div class="empty">No reminders yet.</div>';
+  const urgEl=document.getElementById('d-tasks-urgent');
+  if(urgEl){
+    const todayD=new Date();todayD.setHours(0,0,0,0);
+    const in1=new Date(todayD);in1.setDate(todayD.getDate()+1);
+    const urgent=(db.tasks||[]).filter(t=>!t.done&&t.date&&new Date(t.date+'T12:00:00')<=in1);
+    urgEl.innerHTML=urgent.length?urgent.map(t=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="font-size:13px;">${t.name}</div><div class="row-sub">${t.date?fmtDate(t.date):''} · ${t.category}</div></div><button onclick="completeTask('${t.id}');updateDashboard();" style="background:var(--green-pale);border:1px solid var(--green);color:var(--green);border-radius:var(--radius);padding:3px 8px;font-size:12px;cursor:pointer;white-space:nowrap;">Done</button></div>`).join(''):'<div class="empty">Nothing urgent today.</div>';
+  }
   document.getElementById('d-activity').innerHTML=db.activity.length?db.activity.slice(0,8).map(a=>`<div class="row-item"><div style="font-size:13px;color:var(--text);flex:1;">${a.msg}</div><div class="row-sub" style="white-space:nowrap;">${a.time}</div></div>`).join(''):'<div class="empty">No activity yet.</div>';
 }
 
@@ -595,7 +654,84 @@ async function sendAI(){
   hist.scrollTop=hist.scrollHeight;
 }
 
-function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();updateDashboard();}
+
+/* TASKS */
+function saveTask(){
+  const name=document.getElementById('t-name').value.trim();
+  if(!name)return alert('Please enter a task description.');
+  const task={
+    id:Date.now().toString(),
+    name,
+    date:document.getElementById('t-date').value,
+    priority:document.getElementById('t-priority').value,
+    category:document.getElementById('t-cat').value,
+    repeat:document.getElementById('t-repeat').value,
+    notes:document.getElementById('t-notes').value,
+    done:false,
+    doneDate:null
+  };
+  db.tasks.push(task);
+  addActivity('Added task: '+name);
+  closeModal('task');
+  ['t-name','t-date','t-notes'].forEach(id=>document.getElementById(id).value='');
+  persist();renderTasks();updateDashboard();
+}
+
+function completeTask(id){
+  const task=db.tasks.find(t=>t.id===id);
+  if(!task)return;
+  if(task.repeat&&task.repeat!=='No repeat'&&task.date){
+    task.done=false;task.doneDate=null;
+    const d=new Date(task.date+'T12:00:00');
+    if(task.repeat==='Daily')d.setDate(d.getDate()+1);
+    else if(task.repeat==='Weekly')d.setDate(d.getDate()+7);
+    else if(task.repeat==='Monthly')d.setMonth(d.getMonth()+1);
+    else if(task.repeat==='Annually')d.setFullYear(d.getFullYear()+1);
+    task.date=d.toISOString().slice(0,10);
+    addActivity('Completed & rescheduled: '+task.name);
+  } else {
+    task.done=true;task.doneDate=new Date().toISOString().slice(0,10);
+    addActivity('Completed task: '+task.name);
+  }
+  persist();renderTasks();updateDashboard();
+}
+
+function deleteTask(id){
+  if(!confirm('Remove this task?'))return;
+  db.tasks=db.tasks.filter(t=>t.id!==id);
+  persist();renderTasks();updateDashboard();
+}
+
+function renderTasks(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const in7=new Date(today);in7.setDate(today.getDate()+7);
+  const ago14=new Date(today);ago14.setDate(today.getDate()-14);
+
+  const active=db.tasks.filter(t=>!t.done);
+  const done=db.tasks.filter(t=>t.done&&t.doneDate&&new Date(t.doneDate+'T12:00:00')>=ago14);
+
+  const overdue=active.filter(t=>t.date&&new Date(t.date+'T12:00:00')<today);
+  const soon=active.filter(t=>t.date&&new Date(t.date+'T12:00:00')>=today&&new Date(t.date+'T12:00:00')<=in7);
+  const upcoming=active.filter(t=>!t.date||(new Date(t.date+'T12:00:00')>in7));
+
+  function taskRow(t){
+    const catColors={Livestock:'bg-green',Crops:'bg-amber',Machinery:'bg-gray',Buildings:'bg-gray',Finance:'bg-blue',Compliance:'bg-red',General:'bg-gray'};
+    const repIcon=t.repeat&&t.repeat!=='No repeat'?' <span style="font-size:10px;color:var(--text-muted);">&#8635; '+t.repeat+'</span>':'';
+    return `<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${t.name}${repIcon}</div><div class="row-sub">${t.date?fmtDate(t.date):''}${t.notes?' · '+t.notes:''}</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><span class="badge ${catColors[t.category]||'bg-gray'}" style="font-size:10px;">${t.category}</span><button onclick="completeTask('${t.id}')" style="background:var(--green-pale);border:1px solid var(--green);color:var(--green);border-radius:var(--radius);padding:3px 8px;font-size:12px;cursor:pointer;">Done</button><button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 3px;line-height:1;">&times;</button></div></div>`;
+  }
+
+  const ovEl=document.getElementById('tasks-overdue');
+  const snEl=document.getElementById('tasks-soon');
+  const alEl=document.getElementById('tasks-all');
+  const dnEl=document.getElementById('tasks-done');
+
+  if(ovEl)ovEl.innerHTML=overdue.length?overdue.map(taskRow).join(''):'<div class="empty">Nothing overdue.</div>';
+  if(snEl)snEl.innerHTML=soon.length?soon.map(taskRow).join(''):'<div class="empty">Nothing in next 7 days.</div>';
+  if(alEl)alEl.innerHTML=upcoming.length?upcoming.map(taskRow).join(''):'<div class="empty">No further tasks.</div>';
+  if(dnEl)dnEl.innerHTML=done.length?done.map(t=>`<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name" style="text-decoration:line-through;color:var(--text-muted);font-size:13px;">${t.name}</div><div class="row-sub">Completed ${fmtDate(t.doneDate)}</div></div></div>`).join(''):'<div class="empty">No completed tasks yet.</div>';
+}
+
+function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();renderTasks();updateDashboard();}
 
 /* INIT */
 loadLocal();loadCfg();
