@@ -657,8 +657,9 @@ async function sendAI(){
 
 /* TASKS */
 function saveTask(){
+  if(!db.tasks)db.tasks=[];
   const name=document.getElementById('t-name').value.trim();
-  if(!name)return alert('Please enter a task description.');
+  if(!name){alert('Please enter a task description.');return;}
   const task={
     id:Date.now().toString(),
     name,
