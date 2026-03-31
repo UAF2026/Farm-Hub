@@ -150,6 +150,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="metric-card"><div class="metric-label">Fields in crop</div><div class="metric-value" id="d-fields">0</div><div class="metric-sub" id="d-fields-sub">of 0 registered</div></div>
     <div class="metric-card"><div class="metric-label">Bills due (30d)</div><div class="metric-value" id="d-bills">£0</div><div class="metric-sub">outstanding</div></div>
     <div class="metric-card"><div class="metric-label">Invoices owed</div><div class="metric-value" id="d-invoices">£0</div><div class="metric-sub">to collect</div></div>
+  <div id="task-form-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;">
+    <div style="font-family:'Lora',serif;font-size:17px;font-weight:500;margin-bottom:1rem;color:var(--text);">Add task</div>
+    <label class="form-label">Task description</label>
+    <input id="t-name" placeholder="e.g. Check water troughs" style="width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:10px;font-family:'DM Sans',sans-serif;outline:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div><label class="form-label">Due date</label><input id="t-date" type="date" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;"></div>
+      <div><label class="form-label">Priority</label><select id="t-priority" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;"><option>High</option><option>Medium</option><option>Low</option></select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div><label class="form-label">Category</label><select id="t-cat" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;"><option>Livestock</option><option>Crops</option><option>Machinery</option><option>Buildings</option><option>Finance</option><option>Compliance</option><option>General</option></select></div>
+      <div><label class="form-label">Repeat</label><select id="t-repeat" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;"><option>No repeat</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annually</option></select></div>
+    </div>
+    <label class="form-label">Notes</label>
+    <input id="t-notes" placeholder="Additional details..." style="width:100%;padding:9px 11px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:12px;font-family:'DM Sans',sans-serif;outline:none;">
+    <div style="display:flex;gap:8px;">
+      <button class="btn-cancel" onclick="hideTaskForm()">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save task</button>
+    </div>
   </div>
   <div class="card" style="border-left:4px solid var(--red);border-radius:0 var(--radius-lg) var(--radius-lg) 0;margin-bottom:1rem;">
     <div class="card-title" style="color:var(--red);">Needs attention today</div>
