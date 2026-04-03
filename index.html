@@ -244,7 +244,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- SCHEMES -->
 <div id="schemes" class="section">
-  <button class="btn-add" onclick="openModal('scheme')" style="margin-bottom:1rem;">+ Add scheme / reminder</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <button class="btn-add" onclick="openModal('scheme')">+ Add scheme / reminder</button>
+    <button class="btn-add" onclick="loadAgreementSchemes()" id="seed-btn">&#8595; Load CS &amp; SFI reminders</button>
+  </div>
   <div class="grid2">
     <div class="card"><div class="card-title">Scheme dates &amp; reminders</div><div id="scheme-list"><div class="empty">No dates added yet.</div></div></div>
     <div class="card">
@@ -654,6 +657,46 @@ function sendAI(){
     hist.scrollTop=hist.scrollHeight;
   })
   .catch(function(){think.textContent='Could not connect. Please check your internet and try again.';});
+}
+
+
+function loadAgreementSchemes(){
+  if(!confirm('This will add all your CS and SFI agreement reminders to the Schemes tab. Any already added will be skipped. Continue?'))return;
+  var btn=document.getElementById('seed-btn');
+  if(btn){btn.textContent='Loading...';btn.disabled=true;}
+  var newSchemes=[
+    {name:'CS annual claim deadline - submit by 15 May',date:'2026-05-15',priority:'High priority',notes:'CS agreement 1255553. Late after 15 May loses 1% per working day. After 1 Sep loses all payment for year.'},
+    {name:'CS rotational options locations - notify RPA by 1 Sep',date:'2026-09-01',priority:'High priority',notes:'CS 1255553. Confirm AB1, AB2, AB5, AB9, AB10, AB14, AB15, GS3 locations on claim form by 1 September.'},
+    {name:'CS AB2 overwinter stubble - confirm location by 1 Sep',date:'2026-09-01',priority:'High priority',notes:'CS 1255553. Record stubble locations on SU7288 6817, SU7288 4543, SU7287 5465, SU7287 5893 for winter 2026/27.'},
+    {name:'CS agreement ends - begin replacement planning',date:'2026-10-01',priority:'High priority',notes:'CS agreement 1255553 ends 31 Dec 2026. Contact adviser to explore renewal or replacement options.'},
+    {name:'SFI 1 agreement ends - begin replacement planning',date:'2026-10-01',priority:'High priority',notes:'SFI 1690256 ends 31 Mar 2027. Worth £56,074/year. Monitor RPA for SFI reopening. Speak to adviser.'},
+    {name:'SFI 1 SAM1 soil sampling - arrange ahead of April',date:'2026-04-01',priority:'High priority',notes:'SFI 1690256. Annual soil organic matter testing required across all SAM1 parcels. Book sampler in advance.'},
+    {name:'SFI 3 SOH3 cover crops - establish by autumn',date:'2026-09-01',priority:'High priority',notes:'SFI 2196980. Multi-species cover crops on 57ha: SU7387 6074/7025/7575, SU7486 2085, SU7487 1809/2040.'},
+    {name:'SFI 1 HRW1 hedgerow condition assessment',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1690256. Annual assessment of 29,565m of hedgerow. Record and retain evidence.'},
+    {name:'SFI 1 IPM1 - review integrated pest management plan',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1690256. Annual IPM plan review. Keep updated plan on farm for inspection.'},
+    {name:'SFI 1 NUM1 - nutrient management review report',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1690256. Annual nutrient management review required. Worth £652/year.'},
+    {name:'SFI 1 NUM3 legume fallow - management check',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1690256. Legume fallow on 20.59ha parcel SU7285 4854. Check management requirements annually.'},
+    {name:'SFI 2 AHW2 - purchase supplementary bird food 1 tonne',date:'2026-11-01',priority:'Medium priority',notes:'SFI 1927187. 1 tonne supplementary winter bird food required annually. Keep purchase receipt as evidence.'},
+    {name:'SFI 2 AHW5 - maintain lapwing nesting plots 2ha',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1927187. 2ha lapwing nesting plots on SU7387 3575. Maintain per action requirements.'},
+    {name:'SFI 2 PRF1 - keep variable rate nutrient records',date:'2026-04-01',priority:'Medium priority',notes:'SFI 1927187. Variable rate application records must be kept for all PRF1 parcels. John Deere records count.'},
+    {name:'CS BE3 hedgerow management - annual check',date:'2026-06-01',priority:'Medium priority',notes:'CS 1255553. Hedgerow management on 2,184m on parcel SU7196 5083. Check management is compliant.'},
+    {name:'CS GS6 species-rich grassland - management check',date:'2026-05-01',priority:'Medium priority',notes:'CS 1255553. Species-rich grassland on SU7287 7507 (10.29ha) and SU7391 1075 (8.37ha). Check cutting/grazing.'},
+    {name:'RPA annual claim window - check ruralpayments.org',date:'2026-02-01',priority:'Medium priority',notes:'Check Rural Payments for SAF and CS claim windows. Log in at ruralpayments.org'},
+    {name:'SFI 3 agreement ends 30 Sep 2028',date:'2028-07-01',priority:'Low priority',notes:'SFI 2196980 ends 30 Sep 2028. SOH3 cover crops 57ha. Begin planning 3 months ahead of expiry.'}
+  ];
+  if(!db.schemes)db.schemes=[];
+  var existing={};
+  for(var i=0;i<db.schemes.length;i++){existing[db.schemes[i].name]=true;}
+  var added=0;
+  for(var i=0;i<newSchemes.length;i++){
+    if(!existing[newSchemes[i].name]){db.schemes.push(newSchemes[i]);added++;}
+  }
+  addActivity('Loaded '+added+' CS and SFI scheme reminders');
+  persist();
+  renderSchemes();
+  updateDashboard();
+  if(btn){btn.textContent='&#8595; Load CS & SFI reminders';btn.disabled=false;}
+  alert('Done! Added '+added+' scheme reminders to your Schemes tab.');
 }
 
 function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();renderTasks();updateDashboard();}
