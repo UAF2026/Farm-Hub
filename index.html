@@ -234,12 +234,53 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- FINANCE -->
 <div id="finance" class="section">
-  <button class="btn-add" onclick="openModal('finance')" style="margin-bottom:1rem;">+ Add invoice / bill</button>
-  <div class="grid2">
-    <div class="card"><div class="card-title">Invoices — owed to me</div><div id="invoice-list"><div class="empty">None added yet.</div></div></div>
-    <div class="card"><div class="card-title">Bills — I owe</div><div id="bills-list"><div class="empty">None added yet.</div></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <button class="btn-add" onclick="openModal('finance')">+ Add invoice / bill</button>
+    <button class="btn-add" onclick="exportFinanceCSV()">&#8595; Export CSV for Farmplan</button>
   </div>
-  <div class="card"><div class="card-title">Cashflow snapshot</div><div class="fin-totals"><div class="fin-total-card fin-in"><div class="fin-total-label">Owed to me</div><div class="fin-total-value" id="fin-in-total">£0</div></div><div class="fin-total-card fin-out"><div class="fin-total-label">I owe</div><div class="fin-total-value" id="fin-out-total">£0</div></div></div></div>
+
+  <div class="metric-grid" style="margin-bottom:1rem;">
+    <div class="metric-card"><div class="metric-label">Outstanding bills</div><div class="metric-value" id="fin-bills-count">0</div><div class="metric-sub" id="fin-bills-total">£0 total</div></div>
+    <div class="metric-card"><div class="metric-label">Outstanding invoices</div><div class="metric-value" id="fin-inv-count">0</div><div class="metric-sub" id="fin-inv-total">£0 total</div></div>
+    <div class="metric-card"><div class="metric-label">VAT on bills (input)</div><div class="metric-value" id="fin-vat-in">£0</div><div class="metric-sub">reclaimable</div></div>
+    <div class="metric-card"><div class="metric-label">VAT on invoices (output)</div><div class="metric-value" id="fin-vat-out">£0</div><div class="metric-sub">to pay</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px;">
+      <div class="card-title" style="margin-bottom:0;">All transactions</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="fin-filter-type" onchange="renderFinance()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;">
+          <option value="all">All types</option>
+          <option value="bill">Bills only</option>
+          <option value="invoice">Invoices only</option>
+        </select>
+        <select id="fin-filter-status" onchange="renderFinance()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;">
+          <option value="all">All statuses</option>
+          <option value="Outstanding">Outstanding</option>
+          <option value="Paid">Paid</option>
+        </select>
+        <select id="fin-filter-cat" onchange="renderFinance()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;">
+          <option value="all">All categories</option>
+          <option value="Feed">Feed</option>
+          <option value="Seed">Seed</option>
+          <option value="Fertiliser">Fertiliser</option>
+          <option value="Sprays">Sprays</option>
+          <option value="Vet &amp; medicine">Vet &amp; medicine</option>
+          <option value="Machinery">Machinery</option>
+          <option value="Fuel">Fuel</option>
+          <option value="Labour">Labour</option>
+          <option value="Rent">Rent</option>
+          <option value="Utilities">Utilities</option>
+          <option value="Cattle sales">Cattle sales</option>
+          <option value="Grain sales">Grain sales</option>
+          <option value="Scheme payments">Scheme payments</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div id="finance-list"><div class="empty">No transactions yet.</div></div>
+  </div>
 </div>
 
 <!-- SCHEMES -->
@@ -387,9 +428,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="modal-overlay" id="modal-finance">
   <div class="modal-box">
     <div class="modal-title">Add invoice or bill</div>
-    <div class="field-row"><div><label class="form-label">Type</label><select id="fin-type"><option>Invoice (owed to me)</option><option>Bill (I owe)</option></select></div><div><label class="form-label">Amount (£)</label><input id="fin-amount" type="number" placeholder="0.00"></div></div>
-    <label class="form-label">Description</label><input id="fin-desc" placeholder="Cattle sales — Thame Market">
-    <div class="field-row"><div><label class="form-label">Due date</label><input id="fin-due" type="date"></div><div><label class="form-label">Status</label><select id="fin-status"><option>Outstanding</option><option>Paid</option></select></div></div>
+    <div class="field-row">
+      <div><label class="form-label">Type</label><select id="fin-type" onchange="updateFinType()"><option>Bill (I owe)</option><option>Invoice (owed to me)</option></select></div>
+      <div><label class="form-label">Status</label><select id="fin-status"><option>Outstanding</option><option>Paid</option></select></div>
+    </div>
+    <label class="form-label">Supplier / customer</label>
+    <input id="fin-supplier" placeholder="e.g. Wynnstay, BOCM, Thame Market">
+    <label class="form-label">Description</label>
+    <input id="fin-desc" placeholder="e.g. Cattle feed delivery, Winter wheat seed">
+    <div class="field-row">
+      <div><label class="form-label">Category</label>
+        <select id="fin-cat">
+          <option>Feed</option><option>Seed</option><option>Fertiliser</option><option>Sprays</option>
+          <option>Vet &amp; medicine</option><option>Machinery</option><option>Fuel</option>
+          <option>Labour</option><option>Rent</option><option>Utilities</option>
+          <option>Cattle sales</option><option>Grain sales</option><option>Scheme payments</option><option>Other</option>
+        </select>
+      </div>
+      <div><label class="form-label">Invoice date</label><input id="fin-date" type="date"></div>
+    </div>
+    <div class="field-row">
+      <div><label class="form-label">Net amount (£)</label><input id="fin-net" type="number" placeholder="0.00" oninput="calcVAT()"></div>
+      <div><label class="form-label">VAT rate</label>
+        <select id="fin-vat-rate" onchange="calcVAT()">
+          <option value="20">20% standard</option>
+          <option value="5">5% reduced</option>
+          <option value="0">0% zero rated</option>
+          <option value="-1">Exempt / no VAT</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div><label class="form-label">VAT amount (£)</label><input id="fin-vat" type="number" placeholder="0.00"></div>
+      <div><label class="form-label">Gross total (£)</label><input id="fin-gross" type="number" placeholder="0.00" readonly style="background:var(--green-pale);color:var(--green);font-weight:500;"></div>
+    </div>
+    <label class="form-label">Due date</label>
+    <input id="fin-due" type="date">
+    <label class="form-label">Invoice / reference number</label>
+    <input id="fin-ref" placeholder="e.g. INV-2026-001">
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal('finance')">Cancel</button><button class="btn-primary" onclick="saveFinance()">Save</button></div>
   </div>
 </div>
