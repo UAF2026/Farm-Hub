@@ -236,9 +236,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div id="finance" class="section">
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
     <button class="btn-add" onclick="openModal('finance')">+ Add invoice / bill</button>
+    <button class="btn-add" onclick="document.getElementById('inv-photo').click()" style="background:var(--green-pale);">&#128247; Scan invoice</button>
+    <input type="file" id="inv-photo" accept="image/*" capture="environment" style="display:none;" onchange="handleInvoicePhoto(event)">
     <button class="btn-add" onclick="exportFinanceCSV()">&#8595; Export CSV for Farmplan</button>
   </div>
 
+  <div id="photo-result" style="display:none;margin-bottom:1rem;padding:12px;border-radius:10px;font-size:13px;"></div>
   <div class="metric-grid" style="margin-bottom:1rem;">
     <div class="metric-card"><div class="metric-label">Outstanding bills</div><div class="metric-value" id="fin-bills-count">0</div><div class="metric-sub" id="fin-bills-total">£0 total</div></div>
     <div class="metric-card"><div class="metric-label">Outstanding invoices</div><div class="metric-value" id="fin-inv-count">0</div><div class="metric-sub" id="fin-inv-total">£0 total</div></div>
@@ -375,6 +378,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-mid);">
       <div><div style="font-size:14px;font-weight:500;">Export backup</div><div style="font-size:12px;color:var(--text-muted);">Download all records as JSON</div></div>
       <button class="btn-add" onclick="exportData()">Export</button>
+    </div>
+    <div style="padding:10px 0;border-top:1px solid var(--gray-mid);margin-top:8px;">
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Anthropic API key (for invoice scanning)</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Enter your key to enable photo invoice capture. Stored only on this device.</div>
+      <input id="anthropic-key-input" type="password" placeholder="sk-ant-..." style="width:100%;padding:8px 11px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:8px;font-family:monospace;outline:none;">
+      <button class="btn-primary" onclick="var k=document.getElementById('anthropic-key-input').value.trim();if(k){saveAnthropicKey(k);alert('API key saved.');}else{alert('Please enter a key.');}">Save API key</button>
     </div>
     <div style="padding:10px 0;"><div style="font-size:13px;color:var(--text-muted);">Last synced: <span id="last-synced-label">Never</span></div></div>
   </div>
@@ -775,6 +784,15 @@ function loadAgreementSchemes(){
   alert('Done! Added '+added+' scheme reminders to your Schemes tab.');
 }
 
+
+
+function getAnthropicKey(){
+  return localStorage.getItem('uaf_anthropic_key')||'';
+}
+function saveAnthropicKey(k){
+  localStorage.setItem('uaf_anthropic_key',k);
+}
+function handleInvoicePhoto(e){var f=e.target.files[0];if(!f)return;if(!getAnthropicKey()){alert("Please add your Anthropic API key in Settings first.");return;}var el=document.getElementById('photo-result');el.style.display='block';el.style.background='#eef4ec';el.style.color='#2d5a27';el.textContent='Reading invoice... please wait';var r=new FileReader();r.onload=function(ev){var b64=ev.target.result.split(',')[1];var mt=f.type||'image/jpeg';var payload={model:'claude-opus-4-5',max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mt,data:b64}},{type:'text',text:'Extract invoice details, return ONLY JSON: {supplier,description,category,date,due,net,vat,gross,vatRate,ref}. category must be one of: Feed,Seed,Fertiliser,Sprays,Vet & medicine,Machinery,Fuel,Labour,Rent,Utilities,Cattle sales,Grain sales,Scheme payments,Other. vatRate: 20 or 5 or 0 or -1. dates: YYYY-MM-DD. numbers: numeric. No other text.'}]}]};fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getAnthropicKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)}).then(function(res){return res.json();}).then(function(data){var txt=(data.content||[]).map(function(c){return c.text||'';}).join('');try{var inv=JSON.parse(txt.replace(/```json|```/g,'').trim());openModal('finance');setTimeout(function(){var m={'fin-supplier':'supplier','fin-desc':'description','fin-date':'date','fin-due':'due','fin-ref':'ref'};Object.keys(m).forEach(function(id){if(inv[m[id]]){var el=document.getElementById(id);if(el)el.value=inv[m[id]];}});var n={'fin-net':'net','fin-vat':'vat','fin-gross':'gross'};Object.keys(n).forEach(function(id){if(inv[n[id]]!==undefined){var el=document.getElementById(id);if(el)el.value=parseFloat(inv[n[id]]).toFixed(2);}});var vs=document.getElementById('fin-vat-rate');if(vs&&inv.vatRate!==undefined){var vr=String(inv.vatRate);for(var i=0;i<vs.options.length;i++){if(vs.options[i].value===vr){vs.selectedIndex=i;break;}}}var cs=document.getElementById('fin-cat');if(cs&&inv.category){for(var i=0;i<cs.options.length;i++){if(cs.options[i].text===inv.category){cs.selectedIndex=i;break;}}}el.style.display='none';},400);}catch(ex){el.style.background='#fcecea';el.style.color='#912e2e';el.textContent='Could not read automatically. Please fill the form manually.';openModal('finance');setTimeout(function(){el.style.display='none';},6000);}}).catch(function(){el.style.background='#fcecea';el.style.color='#912e2e';el.textContent='Connection error. Please try again.';setTimeout(function(){el.style.display='none';},5000);});};r.readAsDataURL(f);e.target.value='';}
 function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();renderTasks();updateDashboard();}
 
 /* ---- INIT ---- */
