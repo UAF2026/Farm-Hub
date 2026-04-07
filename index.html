@@ -691,16 +691,20 @@ function renderFields(){var el=document.getElementById('field-list');if(!db.fiel
 function deleteField(i){if(confirm('Remove this field?')){db.fields.splice(i,1);persist();renderFields();updateDashboard();}}
 
 /* ---- FINANCE ---- */
-function saveFinance(){var amount=parseFloat(document.getElementById('fin-amount').value);var desc=document.getElementById('fin-desc').value.trim();if(!desc||isNaN(amount))return alert('Please enter description and amount.');db.finance.push({type:document.getElementById('fin-type').value,amount:amount,desc:desc,due:document.getElementById('fin-due').value,status:document.getElementById('fin-status').value});addActivity('Added finance: '+desc);closeModal('finance');['fin-amount','fin-desc','fin-due'].forEach(function(id){document.getElementById(id).value='';});persist();renderFinance();updateDashboard();}
-function renderFinance(){
-  var inv=db.finance.filter(function(f){return f.type.indexOf('Invoice')>=0;});
-  var bil=db.finance.filter(function(f){return f.type.indexOf('Bill')>=0;});
-  document.getElementById('invoice-list').innerHTML=inv.length?inv.map(function(f){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.desc+'</div><div class="row-sub">'+(f.due?'Due: '+fmtDate(f.due):'No due date')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">'+fmtMoney(f.amount)+'</div><span class="badge '+(f.status==='Paid'?'bg-green':'bg-amber')+'">'+f.status+'</span></div><button class="del-btn" onclick="deleteFinance('+db.finance.indexOf(f)+')">&times;</button></div></div>';}).join(''):'<div class="empty">None yet.</div>';
-  document.getElementById('bills-list').innerHTML=bil.length?bil.map(function(f){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.desc+'</div><div class="row-sub">'+(f.due?'Due: '+fmtDate(f.due):'No due date')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">'+fmtMoney(f.amount)+'</div><span class="badge '+(f.status==='Paid'?'bg-green':'bg-red')+'">'+f.status+'</span></div><button class="del-btn" onclick="deleteFinance('+db.finance.indexOf(f)+')">&times;</button></div></div>';}).join(''):'<div class="empty">None yet.</div>';
-  var fit=document.getElementById('fin-in-total');if(fit)fit.textContent=fmtMoney(inv.filter(function(f){return f.status==='Outstanding';}).reduce(function(a,b){return a+b.amount;},0));
-  var fot=document.getElementById('fin-out-total');if(fot)fot.textContent=fmtMoney(bil.filter(function(f){return f.status==='Outstanding';}).reduce(function(a,b){return a+b.amount;},0));
+function saveFinance(){
+  var desc=document.getElementById('fin-desc').value.trim();
+  var net=parseFloat(document.getElementById('fin-net').value);
+  if(!desc||isNaN(net))return alert('Please enter a description and net amount.');
+  var vat=parseFloat(document.getElementById('fin-vat').value)||0;
+  var gross=parseFloat(document.getElementById('fin-gross').value)||net;
+  var entry={type:document.getElementById('fin-type').value,status:document.getElementById('fin-status').value,supplier:document.getElementById('fin-supplier').value.trim(),desc:desc,category:document.getElementById('fin-cat').value,date:document.getElementById('fin-date').value,net:net,vat:vat,gross:gross,vatRate:document.getElementById('fin-vat-rate').value,due:document.getElementById('fin-due').value,ref:document.getElementById('fin-ref').value.trim(),amount:gross};
+  db.finance.push(entry);
+  addActivity('Added '+(entry.type.indexOf('Bill')>=0?'bill':'invoice')+': '+desc+' '+fmtMoney(gross));
+  closeModal('finance');
+  ['fin-supplier','fin-desc','fin-net','fin-vat','fin-gross','fin-due','fin-ref','fin-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  persist();renderFinance();updateDashboard();
 }
-function deleteFinance(i){if(confirm('Remove?')){db.finance.splice(i,1);persist();renderFinance();updateDashboard();}}
+
 
 /* ---- SCHEMES ---- */
 function saveScheme(){var name=document.getElementById('s-name').value.trim();if(!name)return alert('Please enter a name.');db.schemes.push({name:name,date:document.getElementById('s-date').value,priority:document.getElementById('s-priority').value,notes:document.getElementById('s-notes').value});addActivity('Added reminder: '+name);closeModal('scheme');['s-name','s-date','s-notes'].forEach(function(id){document.getElementById(id).value='';});persist();renderSchemes();updateDashboard();}
@@ -793,6 +797,56 @@ function saveAnthropicKey(k){
   localStorage.setItem('uaf_anthropic_key',k);
 }
 function handleInvoicePhoto(e){var f=e.target.files[0];if(!f)return;var ak=getAnthropicKey();if(!ak||ak.length<10){alert('Please go to Settings and save your Anthropic API key first.');return;}var el=document.getElementById('photo-result');el.style.display='block';el.style.background='#eef4ec';el.style.color='#2d5a27';el.textContent='Reading invoice... please wait';var r=new FileReader();r.onload=function(ev){var b64=ev.target.result.split(',')[1];var mt=f.type||'image/jpeg';if(mt==='application/pdf')mt='application/pdf';var payload={model:'claude-opus-4-5',max_tokens:800,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:mt,data:b64}},{type:'text',text:'Extract invoice details, return ONLY JSON: {supplier,description,category,date,due,net,vat,gross,vatRate,ref}. category must be one of: Feed,Seed,Fertiliser,Sprays,Vet & medicine,Machinery,Fuel,Labour,Rent,Utilities,Cattle sales,Grain sales,Scheme payments,Other. vatRate: 20 or 5 or 0 or -1. dates: YYYY-MM-DD. numbers: numeric. No other text.'}]}]};fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':getAnthropicKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)}).then(function(res){return res.json();}).then(function(data){var txt=(data.content||[]).map(function(c){return c.text||'';}).join('');try{var inv=JSON.parse(txt.replace(/```json|```/g,'').trim());openModal('finance');setTimeout(function(){var m={'fin-supplier':'supplier','fin-desc':'description','fin-date':'date','fin-due':'due','fin-ref':'ref'};Object.keys(m).forEach(function(id){if(inv[m[id]]){var el=document.getElementById(id);if(el)el.value=inv[m[id]];}});var n={'fin-net':'net','fin-vat':'vat','fin-gross':'gross'};Object.keys(n).forEach(function(id){if(inv[n[id]]!==undefined){var el=document.getElementById(id);if(el)el.value=parseFloat(inv[n[id]]).toFixed(2);}});var vs=document.getElementById('fin-vat-rate');if(vs&&inv.vatRate!==undefined){var vr=String(inv.vatRate);for(var i=0;i<vs.options.length;i++){if(vs.options[i].value===vr){vs.selectedIndex=i;break;}}}var cs=document.getElementById('fin-cat');if(cs&&inv.category){for(var i=0;i<cs.options.length;i++){if(cs.options[i].text===inv.category){cs.selectedIndex=i;break;}}}el.style.display='none';},400);}catch(ex){el.style.background='#fcecea';el.style.color='#912e2e';el.textContent='Could not read automatically. Please fill the form manually.';openModal('finance');setTimeout(function(){el.style.display='none';},6000);}}).catch(function(err){el.style.background='#fcecea';el.style.color='#912e2e';el.textContent='Error: '+err.message+'. Key set: '+(getAnthropicKey()?'yes':'no — go to Settings');setTimeout(function(){el.style.display='none';},9000);});};r.readAsDataURL(f);e.target.value='';}
+
+function renderFinance(){
+  var typeF=document.getElementById('fin-filter-type');
+  var statusF=document.getElementById('fin-filter-status');
+  var catF=document.getElementById('fin-filter-cat');
+  var typeV=typeF?typeF.value:'all';
+  var statusV=statusF?statusF.value:'all';
+  var catV=catF?catF.value:'all';
+  var all=db.finance.slice().sort(function(a,b){return(b.date||'')>(a.date||'')?1:-1;});
+  var filtered=all.filter(function(f){
+    var isBill=f.type.indexOf('Bill')>=0;
+    if(typeV==='bill'&&!isBill)return false;
+    if(typeV==='invoice'&&isBill)return false;
+    if(statusV!=='all'&&f.status!==statusV)return false;
+    if(catV!=='all'&&f.category!==catV)return false;
+    return true;
+  });
+  var el=document.getElementById('finance-list');
+  if(!el)return;
+  if(!db.finance.length){el.innerHTML='<div class="empty">No transactions yet. Add your first invoice or bill.</div>';return;}
+  if(!filtered.length){el.innerHTML='<div class="empty">No transactions match your filters.</div>';return;}
+  el.innerHTML=filtered.map(function(f){
+    var i=db.finance.indexOf(f);
+    var isBill=f.type.indexOf('Bill')>=0;
+    var col=f.status==='Paid'?'bg-green':isBill?'bg-red':'bg-amber';
+    var net=f.net||f.amount||0;var vat=f.vat||0;var gross=f.gross||f.amount||0;
+    return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+(f.supplier?f.supplier+' — ':'')+f.desc+'</div><div class="row-sub">'+(f.category||'')+(f.date?' &middot; '+fmtDate(f.date):'')+(f.due&&f.status==='Outstanding'?' &middot; Due: '+fmtDate(f.due):'')+(f.ref?' &middot; '+f.ref:'')+'</div><div class="row-sub" style="font-size:11px;">Net: '+fmtMoney(net)+' + VAT: '+fmtMoney(vat)+' = Gross: '+fmtMoney(gross)+'</div></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;"><div style="text-align:right;"><div style="font-weight:500;font-size:14px;">'+fmtMoney(gross)+'</div><span class="badge '+(isBill?'bg-red':'bg-blue')+'" style="font-size:10px;">'+(isBill?'Bill':'Invoice')+'</span> <span class="badge '+col+'">'+f.status+'</span></div>'+(f.status==='Outstanding'?'<button onclick="markFinancePaid('+i+')" class="done-btn">Paid</button>':'')+'<button class="del-btn" onclick="deleteFinance('+i+')">&times;</button></div></div>';
+  }).join('');
+  var bills=db.finance.filter(function(f){return f.type.indexOf('Bill')>=0&&f.status==='Outstanding';});
+  var invs=db.finance.filter(function(f){return f.type.indexOf('Invoice')>=0&&f.status==='Outstanding';});
+  var billTotal=bills.reduce(function(a,b){return a+(b.gross||b.amount||0);},0);
+  var invTotal=invs.reduce(function(a,b){return a+(b.gross||b.amount||0);},0);
+  var vatIn=bills.reduce(function(a,b){return a+(b.vat||0);},0);
+  var vatOut=invs.reduce(function(a,b){return a+(b.vat||0);},0);
+  var bc=document.getElementById('fin-bills-count');if(bc)bc.textContent=bills.length;
+  var bt=document.getElementById('fin-bills-total');if(bt)bt.textContent=fmtMoney(billTotal)+' total';
+  var ic=document.getElementById('fin-inv-count');if(ic)ic.textContent=invs.length;
+  var it=document.getElementById('fin-inv-total');if(it)it.textContent=fmtMoney(invTotal)+' total';
+  var vi=document.getElementById('fin-vat-in');if(vi)vi.textContent=fmtMoney(vatIn);
+  var vo=document.getElementById('fin-vat-out');if(vo)vo.textContent=fmtMoney(vatOut);
+}
+function markFinancePaid(i){db.finance[i].status='Paid';addActivity('Marked paid: '+db.finance[i].desc);persist();renderFinance();updateDashboard();}
+function deleteFinance(i){if(confirm('Remove?')){db.finance.splice(i,1);persist();renderFinance();updateDashboard();}}
+function exportFinanceCSV(){
+  if(!db.finance.length)return alert('No transactions to export.');
+  var rows=[['Date','Type','Supplier','Description','Category','Reference','Net','VAT Rate','VAT','Gross','Due Date','Status']];
+  db.finance.forEach(function(f){rows.push([f.date||'',f.type.indexOf('Bill')>=0?'Bill':'Invoice',f.supplier||'',f.desc,f.category||'',f.ref||'',(f.net||f.amount||0).toFixed(2),f.vatRate||'',(f.vat||0).toFixed(2),(f.gross||f.amount||0).toFixed(2),f.due||'',f.status]);});
+  var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var b=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='UAF_Finance_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
 function renderAll(){renderCattle();renderFields();renderFinance();renderSchemes();renderTasks();updateDashboard();}
 
 /* ---- INIT ---- */
