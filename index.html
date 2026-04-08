@@ -214,7 +214,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div id="crops" class="section">
   <button class="btn-add" onclick="loadRPAFields()" id="load-fields-btn" style="margin-bottom:1rem;">&#8595; Load fields from RPA agreements</button>
   <button class="btn-add" onclick="openModal('field')" style="margin-bottom:1rem;">+ Add field</button>
-  <div class="card"><div class="card-title">Field records</div><div id="field-list"><div class="empty">No fields recorded yet.</div></div></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:4px;"><div class="card-title" style="margin-bottom:0;">Field records</div><div id="field-summary"></div></div><div id="field-list"><div class="empty">No fields recorded yet.</div></div></div>
   <div class="grid2">
     <div class="card">
       <div class="card-title">Arable links</div>
@@ -688,7 +688,30 @@ function deleteCattle(i){if(confirm('Remove this animal?')){db.cattle.splice(i,1
 
 /* ---- FIELDS ---- */
 function saveField(){var name=document.getElementById('f-name').value.trim();if(!name)return alert('Please enter a field name.');db.fields.push({name:name,area:document.getElementById('f-area').value,status:document.getElementById('f-status').value,crop:document.getElementById('f-crop').value,notes:document.getElementById('f-notes').value});addActivity('Added field: '+name);closeModal('field');['f-name','f-area','f-crop','f-notes'].forEach(function(id){document.getElementById(id).value='';});persist();renderFields();updateDashboard();}
-function renderFields(){var el=document.getElementById('field-list');if(!db.fields.length){el.innerHTML='<div class="empty">No fields yet.</div>';return;}el.innerHTML=db.fields.map(function(f,i){return'<div class="row-item"><div style="min-width:0;flex:1;"><div class="row-name">'+f.name+(f.area?' <span style="font-weight:400;color:var(--text-muted);">('+f.area+' ha)</span>':'')+'</div><div class="row-sub">'+(f.crop||'')+(f.notes?(f.crop?' &middot; ':'')+f.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="badge '+(f.status==='In crop'?'bg-green':f.status==='Fallow'?'bg-gray':'bg-blue')+'">'+f.status+'</span><button class="del-btn" onclick="deleteField('+i+')">&times;</button></div></div>';}).join('');}
+function renderFields(){
+  var el=document.getElementById('field-list');
+  if(!db.fields.length){el.innerHTML='<div class="empty">No fields yet.</div>';return;}
+  el.innerHTML=db.fields.map(function(f,i){
+    var statusCol=f.status==='In crop'?'bg-green':f.status==='Grass'?'bg-blue':f.status==='Cover crop'?'bg-amber':f.status==='Herbal ley'?'bg-green':'bg-gray';
+    return'<div class="row-item"><div style="min-width:0;flex:1;cursor:pointer;" onclick="editField('+i+')"><div class="row-name">'+f.name+(f.parcel&&f.parcel!==f.name?' <span style="font-weight:400;font-size:11px;color:var(--text-muted);">['+f.parcel+']</span>':'')+(f.area?' <span style="font-weight:400;color:var(--text-muted);">('+f.area+' ha / '+(f.area*2.471).toFixed(1)+' ac)</span>':'')+'</div><div class="row-sub">'+(f.crop?'<strong>'+f.crop+'</strong>':'<em style="color:var(--text-muted);">No crop set — tap to edit</em>')+(f.notes?' &middot; '+f.notes:'')+'</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="badge '+statusCol+'">'+f.status+'</span><button class="del-btn" onclick="deleteField('+i+')">&times;</button></div></div>';
+  }).join('');
+  var totalHa=db.fields.reduce(function(a,b){return a+(b.area||0);},0);
+  var inCrop=db.fields.filter(function(f){return f.status==='In crop';}).reduce(function(a,b){return a+(b.area||0);},0);
+  var grass=db.fields.filter(function(f){return f.status==='Grass';}).reduce(function(a,b){return a+(b.area||0);},0);
+  var summary=document.getElementById('field-summary');
+  if(summary)summary.innerHTML='<span style="font-size:12px;color:var(--text-muted);">'+db.fields.length+' parcels &middot; '+totalHa.toFixed(1)+'ha ('+Math.round(totalHa*2.471)+' acres total) &middot; In crop: '+inCrop.toFixed(1)+'ha &middot; Grass: '+grass.toFixed(1)+'ha</span>';
+}
+function editField(i){
+  var f=db.fields[i];
+  var newName=prompt('Field name (currently: '+f.name+'):',f.name);
+  if(newName===null)return;
+  if(newName.trim())f.name=newName.trim();
+  var newCrop=prompt('Current crop (e.g. Winter wheat, Winter barley, Fallow, Grass):',f.crop||'');
+  if(newCrop!==null)f.crop=newCrop.trim();
+  var newStatus=prompt('Status (In crop / Grass / Cover crop / Fallow / Herbal ley):',f.status||'');
+  if(newStatus!==null&&newStatus.trim())f.status=newStatus.trim();
+  persist();renderFields();updateDashboard();
+}
 function deleteField(i){if(confirm('Remove this field?')){db.fields.splice(i,1);persist();renderFields();updateDashboard();}}
 
 /* ---- FINANCE ---- */
