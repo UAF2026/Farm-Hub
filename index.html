@@ -128,6 +128,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <button class="nav-btn" onclick="showSection('crops',this)">Crops</button>
   <button class="nav-btn" onclick="showSection('finance',this)">Finance</button>
   <button class="nav-btn" onclick="showSection('schemes',this)">Schemes</button>
+  <button class="nav-btn" onclick="showSection('farms',this)">Farms</button>
   <button class="nav-btn" onclick="showSection('links',this)">Links</button>
   <button class="nav-btn" onclick="showSection('assistant',this)">AI</button>
   <button class="nav-btn" onclick="showSection('settings',this)">Settings</button>
@@ -212,7 +213,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- CROPS -->
 <div id="crops" class="section">
-  <button class="btn-add" onclick="loadRPAFields()" id="load-fields-btn" style="margin-bottom:1rem;">&#8595; Load fields from RPA agreements</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;">
+    <button class="btn-add" onclick="loadRPAFields()" id="load-fields-btn">&#8595; Load RPA agreement fields</button>
+    <button class="btn-add" onclick="loadBixFields()">&#8595; Load Bix Hall fields</button>
+  </div>
   <button class="btn-add" onclick="openModal('field')" style="margin-bottom:1rem;">+ Add field</button>
   <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:4px;"><div class="card-title" style="margin-bottom:0;">Field records</div><div id="field-summary"></div></div><div id="field-list"><div class="empty">No fields recorded yet.</div></div></div>
   <div class="grid2">
@@ -303,6 +307,72 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Countryside Stewardship</div><a href="https://www.gov.uk/government/collections/countryside-stewardship-get-paid-to-look-after-the-countryside" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;">Mid Tier, Higher Tier &amp; Capitals &rarr;</a></div>
         <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Bovine TB</div><a href="https://www.gov.uk/guidance/bovine-tb-get-your-cattle-tested" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;">Testing requirements &rarr;</a></div>
         <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Farming Investment Fund</div><a href="https://www.gov.uk/guidance/farming-investment-fund" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;">Equipment &amp; infrastructure grants &rarr;</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- FARMS -->
+<div id="farms" class="section">
+  <div id="farm-detail" style="display:none;"></div>
+  <div id="farm-list-view">
+    <div class="grid2">
+      <div class="card farm-card" onclick="showFarm('assendon')" style="cursor:pointer;border-left:4px solid var(--green);">
+        <div class="card-title">Upper Assendon Farm</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Stonor, Henley-on-Thames</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> AHT — 3 generation agreement</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Security:</strong> <span style="color:var(--green);">Secure — James's lifetime</span></div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Includes:</strong> Grainstore 1,200t, beef buildings at Coxslease</div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+      <div class="card farm-card" onclick="showFarm('bix')" style="cursor:pointer;border-left:4px solid #e67e22;">
+        <div class="card-title">Bix Hall Estate</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Bix, near Henley-on-Thames</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> Annual cropping licence + 6 month grazing</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Security:</strong> <span style="color:#e67e22;">Low — annual only</span></div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Opportunity:</strong> CS/SFI ends 2027 — FBT proposal window</div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+      <div class="card farm-card" onclick="showFarm('hollandridge')" style="cursor:pointer;border-left:4px solid #e67e22;">
+        <div class="card-title">Hollandridge Farm</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Near Piddington, Oxfordshire</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> Gentleman's agreement</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Security:</strong> <span style="color:#e67e22;">Low — no formal agreement</span></div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>History:</strong> Farmed for 60+ years</div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+      <div class="card farm-card" onclick="showFarm('grange')" style="cursor:pointer;border-left:4px solid #888;">
+        <div class="card-title">Grange &amp; Shenley Farm</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Oxfordshire</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> Contractors agreement</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Security:</strong> <span style="color:#888;">Contractor basis only</span></div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+      <div class="card farm-card" onclick="showFarm('owned')" style="cursor:pointer;border-left:4px solid var(--green);">
+        <div class="card-title">Owned Land</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Upper Assendon area</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> Freehold owned</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Area:</strong> 164 acres</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Security:</strong> <span style="color:var(--green);">Permanent</span></div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+      <div class="card farm-card" onclick="showFarm('weston')" style="cursor:pointer;border-left:4px solid var(--green);">
+        <div class="card-title">Weston House</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Opposite Upper Assendon Farm</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Tenure:</strong> Owned — residential let</div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Status:</strong> <span style="color:var(--green);">Tenanted</span></div>
+        <div style="font-size:13px;margin-bottom:4px;"><strong>Income:</strong> Rental income stream</div>
+        <div style="font-size:12px;color:var(--blue);margin-top:8px;">Tap to view details →</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem;">
+      <div class="card-title">Portfolio summary</div>
+      <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:4px;">
+        <div style="font-size:13px;"><strong>Total farmed:</strong> ~1,750 acres</div>
+        <div style="font-size:13px;"><strong>Owned:</strong> 164 acres + Weston House</div>
+        <div style="font-size:13px;"><strong>Secure tenure:</strong> AHT + owned land</div>
+        <div style="font-size:13px;"><strong>At risk:</strong> Bix Hall, Hollandridge, Grange &amp; Shenley</div>
       </div>
     </div>
   </div>
@@ -774,6 +844,127 @@ function sendAI(){
 
 
 
+
+function showFarm(id){
+  var farms={
+    assendon:{
+      name:'Upper Assendon Farm',
+      location:'Stonor, Henley-on-Thames, Oxfordshire RG9 6HE',
+      tenure:'AHT — 3 generation agreement',
+      security:'Secure for James\'s lifetime',
+      color:'var(--green)',
+      details:[
+        'Family farmed for 4 generations — James is generation 3',
+        'Mixed beef and arable operation',
+        '1,200 tonne grain store on farm',
+        'Beef finishing buildings at Coxslease Farm (same estate)',
+        'Buildings include some very old structures and newer facilities',
+        'SFI Agreement 1 (UAF332270030) — £56,074/year, ends Mar 2027',
+        'SFI Agreement 2 (M J Hunt & Son 24) — £38,418/year, ends Nov 2027',
+        'SFI Agreement 3 (M J Hunt & Son 25E) — £9,300/year, ends Sep 2028',
+        'CS Agreement (1255553) — ends Dec 2026'
+      ],
+      actions:'Plan CS and SFI replacement before Dec 2026. Explore next generation succession for Charlie.'
+    },
+    bix:{
+      name:'Bix Hall Estate',
+      location:'Bix Hall, Bix, Henley on Thames, Oxfordshire RG9 6BW',
+      tenure:'Seasonal Cropping Licence (annual) + 6 month grazing agreement',
+      security:'Very low — terminable on 1 month notice',
+      color:'#e67e22',
+      details:[
+        'Licensor: Bix Hall Farm Partnership — Lord Alvingham',
+        'Agents: Savills',
+        'Farmed by M J Hunt & Son for approximately 30 years',
+        'Current cropping licence: 57.85ha (142.95 acres) winter wheat only',
+        'Licence period: 1 Oct 2025 to 30 Sep 2026',
+        'Licence fee: £4.50/acre (£643.28 + VAT)',
+        'Licensor CS Mid Tier agreement: 1458943 — ending 2027',
+        'Licensor SFI agreement: 1895125 — ending 2027',
+        '9 named fields: Soundess, Barn, Lunch, Black Dean & Pages, Top East, Bottom Top East, Home, Freedom, Church',
+        'SFI obligations on licence: no insecticides, no-till, variable rate inputs required',
+        'Licensor can terminate on 1 month written notice — very limited security',
+        'Landowners want: income, conservation, legacy, low hassle'
+      ],
+      actions:'STRATEGIC PRIORITY: CS and SFI end 2027 — FBT proposal window opening. Prepare proposal by autumn 2026. Frame around conservation, income, legacy and low hassle. Savills will need to be convinced as well as Lord Alvingham. Consider naming Charlie as co-tenant.'
+    },
+    hollandridge:{
+      name:'Hollandridge Farm',
+      location:'Near Piddington, Oxfordshire',
+      tenure:'Gentleman\'s agreement',
+      security:'Very low — no formal legal agreement',
+      color:'#e67e22',
+      details:[
+        'Farmed by M J Hunt & Son for 60+ years',
+        'No formal written agreement in place',
+        'Long-standing relationship but legally vulnerable',
+        'Could be lost at very short notice with no legal recourse'
+      ],
+      actions:'Consider formalising arrangement with a written agreement. Low priority but worth addressing when opportunity arises.'
+    },
+    grange:{
+      name:'Grange & Shenley Farm',
+      location:'Oxfordshire',
+      tenure:'Contractors agreement',
+      security:'Low — contractor basis only',
+      color:'#888',
+      details:[
+        'Farmed on a contractors agreement basis',
+        'No security of tenure',
+        'Provides additional arable acreage and income'
+      ],
+      actions:'Monitor relationship and performance. No formal security — could end without notice.'
+    },
+    owned:{
+      name:'Owned Land',
+      location:'Upper Assendon area, Oxfordshire',
+      tenure:'Freehold owned',
+      security:'Permanent — the only fully secure land asset',
+      color:'var(--green)',
+      details:[
+        '164 acres owned outright by M J Hunt & Son',
+        'The only land with complete security',
+        'Mix of arable and permanent grass',
+        'Forms the permanent core of the business',
+        'Included within SFI and CS scheme agreements'
+      ],
+      actions:'Protect this asset. Consider how it fits into long term succession planning for Charlie.'
+    },
+    weston:{
+      name:'Weston House',
+      location:'Opposite Upper Assendon Farm, Stonor',
+      tenure:'Owned — residential let',
+      security:'Permanent — owned property',
+      color:'var(--green)',
+      details:[
+        'Residential property owned by M J Hunt & Son',
+        'Currently tenanted — providing rental income',
+        'Located directly opposite the farm',
+        'Important off-farm income stream',
+        'Requires: gas safety certificate, electrical certificate, EPC compliance'
+      ],
+      actions:'Ensure all compliance certificates are up to date. Track tenancy renewal dates and rental income in Finance section.'
+    }
+  };
+  var f=farms[id];
+  if(!f)return;
+  var detail=document.getElementById('farm-detail');
+  var listView=document.getElementById('farm-list-view');
+  detail.style.display='block';
+  listView.style.display='none';
+  detail.innerHTML='<button onclick="document.getElementById(\'farm-detail\').style.display=\'none\';document.getElementById(\'farm-list-view\').style.display=\'block\';" class="btn-add" style="margin-bottom:1rem;">&larr; Back to all farms</button>'+
+    '<div class="card" style="border-left:4px solid '+f.color+';margin-bottom:1rem;">'+
+    '<div class="card-title" style="font-size:18px;">'+f.name+'</div>'+
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">'+f.location+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">'+
+    '<div style="font-size:13px;"><strong>Tenure</strong><br>'+f.tenure+'</div>'+
+    '<div style="font-size:13px;"><strong>Security</strong><br><span style="color:'+f.color+';">'+f.security+'</span></div>'+
+    '</div>'+
+    '<div style="font-size:13px;font-weight:500;margin-bottom:6px;">Key facts:</div>'+
+    '<ul style="margin:0 0 12px 16px;font-size:13px;line-height:1.8;">'+f.details.map(function(d){return'<li>'+d+'</li>';}).join('')+'</ul>'+
+    '<div style="background:var(--green-pale);border-radius:8px;padding:10px;font-size:13px;color:var(--green);"><strong>Action:</strong> '+f.actions+'</div>'+
+    '</div>';
+}
 function loadRPAFields(){
   if(!confirm('This will load 52 field parcels from your RPA agreements into the Fields section. Any already added will be skipped. Continue?'))return;
   var btn=document.getElementById('load-fields-btn');
