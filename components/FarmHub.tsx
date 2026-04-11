@@ -17,13 +17,14 @@ import Assistant from './sections/Assistant';
 import Medicine from './sections/Medicine';
 import Machinery from './sections/Machinery';
 import Utilities from './sections/Utilities';
+import Compliance from './sections/Compliance';
 import Settings from './sections/Settings';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -43,7 +44,7 @@ export default function FarmHub() {
         const parsed = JSON.parse(raw) as Partial<FarmData>;
         const merged: FarmData = { ...emptyDb, ...parsed };
         // Ensure all arrays exist
-        (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities'] as (keyof FarmData)[])
+        (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities','sprays','fertilisers','certificates','checklist'] as (keyof FarmData)[])
           .forEach(k => { if (!Array.isArray(merged[k])) (merged as any)[k] = []; });
         setDb(merged);
       }
@@ -60,7 +61,7 @@ export default function FarmHub() {
         fetchFarmData(parsedCfg.url, parsedCfg.key).then(data => {
           if (data) {
             const merged: FarmData = { ...emptyDb, ...data };
-            (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities'] as (keyof FarmData)[])
+            (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities','sprays','fertilisers','certificates','checklist'] as (keyof FarmData)[])
               .forEach(k => { if (!Array.isArray(merged[k])) (merged as any)[k] = []; });
             setDb(merged);
             try { localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch {}
@@ -133,7 +134,7 @@ export default function FarmHub() {
       const newCfg = { url, key };
       if (existing && existing.cattle && existing.cattle.length > 0) {
         const merged: FarmData = { ...emptyDb, ...existing };
-        (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities'] as (keyof FarmData)[])
+        (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities','sprays','fertilisers','certificates','checklist'] as (keyof FarmData)[])
           .forEach(k => { if (!Array.isArray(merged[k])) (merged as any)[k] = []; });
         setDb(merged);
         saveLocal(merged);
@@ -183,6 +184,7 @@ export default function FarmHub() {
         {section === 'medicine' && <Medicine db={db} persist={persist} addActivity={addActivity} />}
         {section === 'machinery' && <Machinery db={db} persist={persist} addActivity={addActivity} />}
         {section === 'utilities' && <Utilities db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'compliance' && <Compliance db={db} persist={persist} addActivity={addActivity} />}
         {section === 'settings' && (
           <Settings
             db={db} persist={persist} cfg={cfg} lastSynced={lastSynced}

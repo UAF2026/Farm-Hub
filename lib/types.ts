@@ -95,6 +95,69 @@ export interface Utility {
   status: string;
 }
 
+export interface SprayRecord {
+  id: string;
+  date: string;
+  field: string;
+  crop: string;
+  product: string;
+  batch: string;
+  dose: number;
+  doseUnit: string;
+  area: number;
+  totalProduct: number;
+  waterVolume: number;
+  operator: string;
+  basisCertRef: string;
+  windSpeed: string;
+  temperature: string;
+  harvestInterval: number;
+  reEntryInterval: number;
+  purpose: string;
+  notes: string;
+}
+
+export interface FertiliserRecord {
+  id: string;
+  date: string;
+  field: string;
+  crop: string;
+  product: string;
+  type: string;
+  n: number;
+  p: number;
+  k: number;
+  s: number;
+  ratePerHa: number;
+  area: number;
+  totalApplied: number;
+  operator: string;
+  method: string;
+  soilTest: string;
+  notes: string;
+}
+
+export interface Certificate {
+  id: string;
+  name: string;
+  holder: string;
+  certNumber: string;
+  issueDate: string;
+  expiryDate: string;
+  issuedBy: string;
+  category: string;
+  notes: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  section: string;
+  item: string;
+  status: 'Yes' | 'No' | 'N/A' | 'Action required';
+  notes: string;
+  lastChecked: string;
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -105,6 +168,10 @@ export interface FarmData {
   medicine: MedicineRecord[];
   machinery: MachineryRecord[];
   utilities: Utility[];
+  sprays: SprayRecord[];
+  fertilisers: FertiliserRecord[];
+  certificates: Certificate[];
+  checklist: ChecklistItem[];
 }
 
 export const emptyDb: FarmData = {
@@ -117,6 +184,10 @@ export const emptyDb: FarmData = {
   medicine: [],
   machinery: [],
   utilities: [],
+  sprays: [],
+  fertilisers: [],
+  certificates: [],
+  checklist: [],
 };
 
 export interface CloudConfig {
