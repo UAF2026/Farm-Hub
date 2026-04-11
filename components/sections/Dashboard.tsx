@@ -1,6 +1,7 @@
 'use client';
 
-import { FarmData, Task } from '@/lib/types';
+import { FarmData } from '@/lib/types';
+import type { Task } from '@/lib/types';
 import { fmtDate, fmtMoney } from '@/lib/utils';
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; }

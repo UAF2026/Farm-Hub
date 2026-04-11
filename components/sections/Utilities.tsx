@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { FarmData, Utility } from '@/lib/types';
+import { FarmData } from '@/lib/types';
+import type { Utility } from '@/lib/types';
 import { fmtDate, fmtMoney, uid, daysUntil } from '@/lib/utils';
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
