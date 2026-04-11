@@ -322,7 +322,7 @@ export default function Compliance({ db, persist, addActivity }: Props) {
   const filteredFerts = fertFilter ? fertilisers.filter(f => f.field.toLowerCase().includes(fertFilter.toLowerCase()) || f.product.toLowerCase().includes(fertFilter.toLowerCase())) : fertilisers;
 
   const checklistItems = checklistType === 'beef' ? beefItems : arableItems;
-  const sections = [...new Set(checklistItems.map(c => c.section))];
+  const sections = Array.from(new Set(checklistItems.map(c => c.section)));
 
   return (
     <>
