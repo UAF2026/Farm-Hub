@@ -127,7 +127,7 @@ export default function Utilities({ db, persist, addActivity }: Props) {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Add utility contract</div>
 

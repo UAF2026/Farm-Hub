@@ -229,7 +229,7 @@ export default function Crops({ db, persist, addActivity }: Props) {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
             <div className="modal-title">{editIdx !== null ? 'Edit' : 'Add'} field</div>
             <div className="field-row">

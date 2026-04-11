@@ -137,7 +137,7 @@ export default function Machinery({ db, persist, addActivity }: Props) {
       ))}
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Add service record</div>
 

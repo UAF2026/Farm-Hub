@@ -247,7 +247,7 @@ export default function Finance({ db, persist, addActivity }: Props) {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Add invoice/bill</div>
             <div className="field-row">
@@ -320,7 +320,7 @@ export default function Finance({ db, persist, addActivity }: Props) {
       )}
 
       {scanModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setScanModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setScanModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Scan invoice</div>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '1rem' }}>Upload a photo or PDF of an invoice. We'll extract the details and prefill the form.</p>

@@ -187,7 +187,7 @@ export default function Livestock({ db, persist, addActivity }: Props) {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Add cattle</div>
             <div className="field-row">
@@ -226,7 +226,7 @@ export default function Livestock({ db, persist, addActivity }: Props) {
       )}
 
       {csvModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setCsvModal(false)}>
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setCsvModal(false)}>
           <div className="modal-box">
             <div className="modal-title">Import CTS CSV</div>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '1rem' }}>Download your CTS export and select the CSV file. Duplicates will be skipped.</p>
