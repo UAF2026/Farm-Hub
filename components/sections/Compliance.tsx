@@ -85,6 +85,93 @@ const SPRAY_PURPOSES = ['Herbicide', 'Fungicide', 'Insecticide', 'Growth regulat
 const FERT_TYPES = ['Straight N', 'Compound NPK', 'Ammonium nitrate', 'Urea', 'Liquid N', 'Organic manure', 'Digestate', 'FYM', 'Slurry', 'Other'];
 const APPLY_METHODS = ['Spreader', 'Sprayer', 'Dribble bar', 'Injection', 'Broadcast', 'Hand application'];
 
+// ---- CSV helpers ----
+function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const parseRow = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  };
+  const headers = parseRow(lines[0]);
+  const rows = lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = parseRow(l);
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+    return obj;
+  });
+  return { headers, rows };
+}
+
+// John Deere Operations Center column name aliases
+const JD_SPRAY_MAP: Record<string, string[]> = {
+  date:     ['Date', 'Operation Date', 'Start Date', 'Work Date'],
+  field:    ['Field', 'Field Name', 'Zone Name'],
+  crop:     ['Crop', 'Crop Name', 'Crop Type'],
+  product:  ['Product', 'Product Name', 'Material', 'Chemical'],
+  purpose:  ['Operation', 'Operation Type', 'Task Type', 'Type'],
+  dose:     ['Applied Rate', 'Rate', 'Application Rate', 'Dose'],
+  doseUnit: ['Rate Units', 'Unit', 'Units', 'Applied Rate Units'],
+  area:     ['Area Applied', 'Area', 'Hectares', 'Total Area', 'Field Area'],
+  operator: ['Operator', 'Operator Name', 'Worker', 'Driver'],
+  notes:    ['Notes', 'Comments', 'Remarks', 'Description'],
+};
+
+const JD_FERT_MAP: Record<string, string[]> = {
+  date:     ['Date', 'Operation Date', 'Start Date', 'Work Date'],
+  field:    ['Field', 'Field Name', 'Zone Name'],
+  crop:     ['Crop', 'Crop Name', 'Crop Type'],
+  product:  ['Product', 'Product Name', 'Material', 'Fertilizer', 'Fertiliser'],
+  type:     ['Operation', 'Operation Type', 'Task Type', 'Product Type', 'Type'],
+  ratePerHa:['Applied Rate', 'Rate', 'Application Rate'],
+  area:     ['Area Applied', 'Area', 'Hectares', 'Total Area', 'Field Area'],
+  operator: ['Operator', 'Operator Name', 'Worker', 'Driver'],
+  method:   ['Method', 'Application Method', 'Machine Type'],
+  notes:    ['Notes', 'Comments', 'Remarks', 'Description'],
+};
+
+function findCol(headers: string[], aliases: string[]): string {
+  for (const alias of aliases) {
+    const found = headers.find(h => h.toLowerCase() === alias.toLowerCase());
+    if (found) return found;
+  }
+  return '';
+}
+
+function parseDate(s: string): string {
+  if (!s) return new Date().toISOString().slice(0, 10);
+  // Try ISO first
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // DD/MM/YYYY
+  const dm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dm) return `${dm[3]}-${dm[2].padStart(2,'0')}-${dm[1].padStart(2,'0')}`;
+  // MM/DD/YYYY (US)
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (us) {
+    const yr = us[3].length === 2 ? '20' + us[3] : us[3];
+    return `${yr}-${us[1].padStart(2,'0')}-${us[2].padStart(2,'0')}`;
+  }
+  return new Date().toISOString().slice(0, 10);
+}
+
+function guessUnit(unit: string): string {
+  const u = unit.toLowerCase();
+  if (u.includes('l/ha') || u.includes('l/acre')) return 'l/ha';
+  if (u.includes('kg/ha') || u.includes('kg/acre')) return 'kg/ha';
+  if (u.includes('g/ha')) return 'g/ha';
+  if (u.includes('ml/ha') || u.includes('fl oz')) return 'ml/ha';
+  if (u.includes('oz/ac')) return 'ml/ha';
+  return unit || 'l/ha';
+}
+
 export default function Compliance({ db, persist, addActivity }: Props) {
   const [sub, setSub] = useState<SubSection>('overview');
 
@@ -140,6 +227,13 @@ export default function Compliance({ db, persist, addActivity }: Props) {
   const [sprayFilter, setSprayFilter] = useState('');
   const [fertFilter, setFertFilter] = useState('');
   const [checklistType, setChecklistType] = useState<'beef' | 'arable'>('beef');
+
+  // JD import state
+  const [jdImportType, setJdImportType] = useState<'spray' | 'fert' | null>(null);
+  const [jdPreview, setJdPreview] = useState<Record<string, string>[]>([]);
+  const [jdHeaders, setJdHeaders] = useState<string[]>([]);
+  const [jdError, setJdError] = useState('');
+  const [jdMapping, setJdMapping] = useState<Record<string, string>>({});
 
   const sprays = db.sprays || [];
   const fertilisers = db.fertilisers || [];
@@ -291,6 +385,95 @@ export default function Compliance({ db, persist, addActivity }: Props) {
     const a = document.createElement('a'); a.href = url;
     a.download = `fertiliser-records-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
+  }
+
+  // ---- JD Import ----
+  function openJdImport(type: 'spray' | 'fert') {
+    setJdImportType(type);
+    setJdPreview([]);
+    setJdHeaders([]);
+    setJdError('');
+    setJdMapping({});
+  }
+
+  // Store full rows for import
+  const [fullJdRows, setFullJdRows] = useState<Record<string, string>[]>([]);
+
+  function handleJdFileFull(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      const { headers, rows } = parseCSV(text);
+      if (!headers.length) { setJdError('Could not read this file. Make sure it is a CSV.'); return; }
+      setJdHeaders(headers);
+      setJdPreview(rows.slice(0, 5));
+      setFullJdRows(rows);
+      const mapDef = jdImportType === 'spray' ? JD_SPRAY_MAP : JD_FERT_MAP;
+      const autoMap: Record<string, string> = {};
+      Object.entries(mapDef).forEach(([field, aliases]) => {
+        const found = findCol(headers, aliases);
+        if (found) autoMap[field] = found;
+      });
+      setJdMapping(autoMap);
+      setJdError('');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function importJdRows(rows: Record<string, string>[]) {
+    const m = jdMapping;
+    if (jdImportType === 'spray') {
+      const newItems: SprayRecord[] = rows.map(r => {
+        const dose = parseFloat(r[m.dose] ?? '') || 0;
+        const area = parseFloat(r[m.area] ?? '') || 0;
+        return {
+          id: uid(),
+          date: parseDate(r[m.date] ?? ''),
+          field: r[m.field] ?? '',
+          crop: r[m.crop] ?? '',
+          product: r[m.product] ?? '',
+          batch: '',
+          dose, doseUnit: guessUnit(r[m.doseUnit] ?? ''),
+          area, totalProduct: Math.round(dose * area * 100) / 100,
+          waterVolume: 0,
+          operator: r[m.operator] ?? '',
+          basisCertRef: '',
+          windSpeed: '', temperature: '',
+          harvestInterval: 0, reEntryInterval: 0,
+          purpose: r[m.purpose] ?? 'Herbicide',
+          notes: r[m.notes] ?? ''
+        };
+      }).filter(i => i.field || i.product);
+      addActivity(`Imported ${newItems.length} spray records from John Deere`);
+      persist({ ...db, sprays: [...sprays, ...newItems] });
+    } else {
+      const newItems: FertiliserRecord[] = rows.map(r => {
+        const rate = parseFloat(r[m.ratePerHa] ?? '') || 0;
+        const area = parseFloat(r[m.area] ?? '') || 0;
+        return {
+          id: uid(),
+          date: parseDate(r[m.date] ?? ''),
+          field: r[m.field] ?? '',
+          crop: r[m.crop] ?? '',
+          product: r[m.product] ?? '',
+          type: r[m.type] ?? 'Straight N',
+          n: 0, p: 0, k: 0, s: 0,
+          ratePerHa: rate, area,
+          totalApplied: Math.round(rate * area * 100) / 100,
+          operator: r[m.operator] ?? '',
+          method: r[m.method] ?? 'Spreader',
+          soilTest: '', notes: r[m.notes] ?? ''
+        };
+      }).filter(i => i.field || i.product);
+      addActivity(`Imported ${newItems.length} fertiliser records from John Deere`);
+      persist({ ...db, fertilisers: [...fertilisers, ...newItems] });
+    }
+    setJdImportType(null);
+    setJdPreview([]);
+    setFullJdRows([]);
   }
 
   // Cert expiry helpers
@@ -460,6 +643,7 @@ export default function Compliance({ db, persist, addActivity }: Props) {
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
             <button className="btn-add" onClick={() => { resetSpray(); setSprayModal(true); }}>+ Add spray record</button>
+            <button className="btn-primary" onClick={() => openJdImport('spray')} style={{ background: 'var(--green)', color: '#fff' }}>🚜 Import from John Deere</button>
             <button className="btn-primary" onClick={exportSprayCSV}>📥 Export CSV</button>
             <input
               type="text"
@@ -500,6 +684,7 @@ export default function Compliance({ db, persist, addActivity }: Props) {
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
             <button className="btn-add" onClick={() => { resetFert(); setFertModal(true); }}>+ Add fertiliser record</button>
+            <button className="btn-primary" onClick={() => openJdImport('fert')} style={{ background: 'var(--green)', color: '#fff' }}>🚜 Import from John Deere</button>
             <button className="btn-primary" onClick={exportFertCSV}>📥 Export CSV</button>
             <input
               type="text"
@@ -809,6 +994,88 @@ export default function Compliance({ db, persist, addActivity }: Props) {
             <div className="modal-btns">
               <button className="btn-primary" onClick={saveFert}>Save record</button>
               <button className="btn-cancel" onClick={() => setFertModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ JOHN DEERE IMPORT MODAL ============ */}
+      {jdImportType && (
+        <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setJdImportType(null)}>
+          <div className="modal-box" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-title">
+              🚜 Import {jdImportType === 'spray' ? 'spray' : 'fertiliser'} records from John Deere
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
+              In <strong>John Deere Operations Center</strong>, go to <em>Reports → Field Operations</em>, filter by
+              {jdImportType === 'spray' ? ' "Application"' : ' "Fertilizer Application"'}, then export as CSV.
+              Upload that file here.
+            </p>
+            {!jdPreview.length ? (
+              <label style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                border: '2px dashed var(--border)', borderRadius: 'var(--radius)', padding: '2rem',
+                cursor: 'pointer', background: 'var(--bg-secondary)'
+              }}>
+                <span style={{ fontSize: 32, marginBottom: 8 }}>📂</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Click to choose CSV file</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Exported from John Deere Operations Center</span>
+                <input type="file" accept=".csv,text/csv" onChange={handleJdFileFull} style={{ display: 'none' }} />
+              </label>
+            ) : (
+              <>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Column mapping (auto-detected)</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    {Object.entries(jdImportType === 'spray' ? JD_SPRAY_MAP : JD_FERT_MAP).map(([field]) => (
+                      <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{field}</label>
+                        <select
+                          value={jdMapping[field] ?? ''}
+                          onChange={e => setJdMapping(m => ({ ...m, [field]: e.target.value }))}
+                          style={{ fontSize: 12, padding: '0.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
+                        >
+                          <option value="">— skip —</option>
+                          {jdHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Preview (first 5 rows)</div>
+                  <div style={{ overflowX: 'auto', fontSize: 11, border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>{Object.values(jdMapping).filter(Boolean).map(col => (
+                          <th key={col} style={{ padding: '4px 6px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>
+                        ))}</tr>
+                      </thead>
+                      <tbody>
+                        {jdPreview.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                            {Object.values(jdMapping).filter(Boolean).map(col => (
+                              <td key={col} style={{ padding: '3px 6px', whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row[col] ?? ''}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                  {fullJdRows.length} records found in file
+                </div>
+              </>
+            )}
+            {jdError && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 8, padding: 8, background: '#fcecea', borderRadius: 'var(--radius)' }}>{jdError}</div>}
+            <div className="modal-btns">
+              {fullJdRows.length > 0 && (
+                <button className="btn-primary" onClick={() => importJdRows(fullJdRows)}>
+                  Import {fullJdRows.length} records
+                </button>
+              )}
+              <button className="btn-cancel" onClick={() => setJdImportType(null)}>Cancel</button>
             </div>
           </div>
         </div>
