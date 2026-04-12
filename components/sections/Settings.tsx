@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FarmData, CloudConfig } from '@/lib/types';
+import type { ChecklistItem } from '@/lib/types';
 
 interface Props {
   db: FarmData;
@@ -85,7 +86,7 @@ function buildSampleData() {
     { section: 'Biosecurity', item: 'Biosecurity plan documented', status: 'Yes', notes: 'Written plan updated Jan 2026' },
     { section: 'Biosecurity', item: 'Visitor records maintained', status: 'No', notes: 'Action: set up visitor log book at farm entrance' },
     { section: 'Biosecurity', item: 'Isolation facilities available for new/returning animals', status: 'Yes', notes: 'Isolation pen in cattle yard' },
-  ].map(c => ({ id: 'beef_' + uid(), ...c, lastChecked: '2026-04-01' }));
+  ].map(c => ({ id: 'beef_' + uid(), ...c, lastChecked: '2026-04-01' })) as ChecklistItem[];
   const arableChecklist = [
     { section: 'Pesticide Safety', item: 'BASIS-qualified person available for spray advice', status: 'Yes', notes: 'James Hunt holds BASIS cert B-2024-14892' },
     { section: 'Pesticide Safety', item: 'All spray operators hold valid PA1 and appropriate certificate', status: 'Yes', notes: 'James Hunt PA1+PA2. Charlie Hunt PA6.' },
@@ -113,7 +114,7 @@ function buildSampleData() {
     { section: 'Training & Competence', item: 'All staff training records maintained', status: 'Yes', notes: 'Training records in farm office' },
     { section: 'Training & Competence', item: 'First aid provision adequate', status: 'Action required', notes: 'James first aid cert expired Feb 2026 — book refresher' },
     { section: 'Training & Competence', item: 'Risk assessments for key operations documented', status: 'Yes', notes: 'COSHH, machinery, working at height. Updated Jan 2026.' },
-  ].map(c => ({ id: 'arable_' + uid(), ...c, lastChecked: '2026-04-01' }));
+  ].map(c => ({ id: 'arable_' + uid(), ...c, lastChecked: '2026-04-01' })) as ChecklistItem[];
   return { sprays, fertilisers, certificates, checklist: [...beefChecklist, ...arableChecklist] };
 }
 
