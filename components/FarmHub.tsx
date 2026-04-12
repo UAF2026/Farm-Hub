@@ -18,13 +18,14 @@ import Medicine from './sections/Medicine';
 import Machinery from './sections/Machinery';
 import Utilities from './sections/Utilities';
 import Compliance from './sections/Compliance';
+import FieldMap from './sections/FieldMap';
 import Settings from './sections/Settings';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -175,6 +176,7 @@ export default function FarmHub() {
         {section === 'dashboard' && <Dashboard db={db} persist={persist} />}
         {section === 'tasks' && <Tasks db={db} persist={persist} addActivity={addActivity} />}
         {section === 'livestock' && <Livestock db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'map' && <FieldMap db={db} persist={persist} addActivity={addActivity} />}
         {section === 'crops' && <Crops db={db} persist={persist} addActivity={addActivity} />}
         {section === 'finance' && <Finance db={db} persist={persist} addActivity={addActivity} />}
         {section === 'schemes' && <Schemes db={db} persist={persist} addActivity={addActivity} />}

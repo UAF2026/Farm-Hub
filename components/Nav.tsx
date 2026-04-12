@@ -6,6 +6,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'livestock', label: 'Livestock' },
+  { id: 'map', label: 'Map' },
   { id: 'crops', label: 'Crops' },
   { id: 'finance', label: 'Finance' },
   { id: 'schemes', label: 'Schemes' },
