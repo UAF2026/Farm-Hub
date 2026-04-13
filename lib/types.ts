@@ -24,7 +24,7 @@ export interface Field {
   area: number;
   status: string;
   crop: string;
-  variety: string;
+  variety?: string;
   notes: string;
   parcel?: string;   // RPA parcel ID e.g. "5509"
   sheetId?: string;  // RPA sheet e.g. "SU7288"
