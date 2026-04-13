@@ -29,7 +29,7 @@ function cropColor(crop: string) { return CROP_COLORS[crop] || '#78a8c8'; }
 
 /* ─── Load Leaflet from CDN ─────────────────────────────────────────────────── */
 let leafletLoaded = false;
-function loadLeaflet(): Promise<typeof window.L> {
+function loadLeaflet(): Promise<any> {
   return new Promise((resolve) => {
     if (leafletLoaded && (window as any).L) { resolve((window as any).L); return; }
     const css = document.createElement('link');
