@@ -174,6 +174,7 @@ export interface FarmData {
   fertilisers: FertiliserRecord[];
   certificates: Certificate[];
   checklist: ChecklistItem[];
+  dailyBriefing?: DailyBriefing;
 }
 
 export const emptyDb: FarmData = {
@@ -195,4 +196,36 @@ export const emptyDb: FarmData = {
 export interface CloudConfig {
   url: string;
   key: string;
+}
+
+/* ─── Daily Briefing (written by farm-secretary scheduled task) ─────────── */
+export interface BriefingAction {
+  from: string;
+  subject: string;
+  detail: string;
+  deadline?: string;
+}
+
+export interface BriefingInvoice {
+  supplier: string;
+  ref: string;
+  amount: string;
+  due: string;
+  notes: string;
+}
+
+export interface BriefingInfo {
+  from: string;
+  subject: string;
+  detail: string;
+}
+
+export interface DailyBriefing {
+  date: string;           // YYYY-MM-DD
+  generatedAt: string;    // ISO timestamp
+  emailsReviewed: number;
+  actionItems: BriefingAction[];
+  invoices: BriefingInvoice[];
+  information: BriefingInfo[];
+  calendarEvents: string[];
 }

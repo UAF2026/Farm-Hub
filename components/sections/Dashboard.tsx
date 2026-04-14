@@ -1,6 +1,6 @@
 'use client';
 
-import { FarmData } from '@/lib/types';
+import { FarmData, DailyBriefing } from '@/lib/types';
 import type { Task } from '@/lib/types';
 import { fmtDate, fmtMoney } from '@/lib/utils';
 
@@ -61,8 +61,97 @@ export default function Dashboard({ db, persist }: Props) {
     return new Date(u.renewalDate + 'T12:00:00') <= in60;
   });
 
+  /* ─── Briefing panel ─────────────────────────────────────────────────── */
+  const briefing = db.dailyBriefing;
+  const briefingIsToday = briefing?.date === new Date().toISOString().slice(0, 10);
+
   return (
     <>
+      {/* Daily Briefing */}
+      {briefing && (
+        <div className="card" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+            <div className="card-title" style={{ margin: 0 }}>📬 Farm Secretary Briefing</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(briefing.date)}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{briefing.emailsReviewed} emails reviewed</div>
+              {!briefingIsToday && (
+                <div style={{ fontSize: 11, color: 'var(--amber, #d97706)', marginTop: 2 }}>⚠ Not today's briefing</div>
+              )}
+            </div>
+          </div>
+
+          {/* Calendar events */}
+          {briefing.calendarEvents.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--primary)', marginBottom: 4 }}>📅 Calendar</div>
+              {briefing.calendarEvents.map((ev, i) => (
+                <div key={i} style={{ fontSize: 13, padding: '3px 0', color: 'var(--text)' }}>{ev}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Action items */}
+          {briefing.actionItems.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--red)', marginBottom: 4 }}>🔴 Action Required</div>
+              {briefing.actionItems.map((item, i) => (
+                <div key={i} className="row-item" style={{ alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="row-name">{item.subject}</div>
+                    <div className="row-sub">{item.from}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2 }}>{item.detail}</div>
+                    {item.deadline && (
+                      <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}>⏱ {item.deadline}</div>
+                    )}
+                  </div>
+                  <span className="badge bg-red" style={{ flexShrink: 0, marginLeft: 8 }}>Action</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Invoices */}
+          {briefing.invoices.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 4 }}>📄 Invoices & Payments</div>
+              {briefing.invoices.map((inv, i) => (
+                <div key={i} className="row-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="row-name">{inv.supplier}</div>
+                    <div className="row-sub">{[inv.ref && `Ref: ${inv.ref}`, inv.notes].filter(Boolean).join(' · ')}</div>
+                    {inv.due && <div className="row-sub">Due: {inv.due}</div>}
+                  </div>
+                  {inv.amount && (
+                    <div style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginLeft: 8 }}>{inv.amount}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Other information */}
+          {briefing.information.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 4 }}>📬 Other Information</div>
+              {briefing.information.map((item, i) => (
+                <div key={i} className="row-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="row-name">{item.subject}</div>
+                    <div className="row-sub">{item.from}</div>
+                    {item.detail && <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2 }}>{item.detail}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {briefing.actionItems.length === 0 && briefing.invoices.length === 0 && briefing.information.length === 0 && (
+            <div className="empty">Nothing farm-business related in today's inbox.</div>
+          )}
+        </div>
+      )}
+
       <div className="weather-strip">
         <span>Henley-on-Thames — check forecast before fieldwork</span>
         <a href="https://www.metoffice.gov.uk/weather/forecast/gcpvqhv8n" target="_blank" rel="noreferrer">Met Office →</a>
