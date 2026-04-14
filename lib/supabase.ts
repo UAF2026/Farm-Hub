@@ -20,8 +20,11 @@ export async function fetchFarmData(url: string, key: string): Promise<FarmData 
 
 export async function saveFarmData(url: string, key: string, farmData: FarmData): Promise<void> {
   const supabase = getSupabaseClient(url, key);
+  // Read existing first so server-managed fields (e.g. dailyBriefing) are preserved
+  const { data: existing } = await supabase.from('farmdata').select('data').eq('id', ROW_ID).single();
+  const toSave = { ...(existing?.data ?? {}), ...farmData };
   const { error } = await supabase
     .from('farmdata')
-    .upsert({ id: ROW_ID, data: farmData, updated_at: new Date().toISOString() });
+    .upsert({ id: ROW_ID, data: toSave, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
 }
