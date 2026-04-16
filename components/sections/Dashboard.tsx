@@ -64,13 +64,11 @@ export default function Dashboard({ db, persist }: Props) {
   /* ─── Briefing panel ─────────────────────────────────────────────────── */
   const briefing = db.dailyBriefing;
   const briefingIsToday = briefing?.date === new Date().toISOString().slice(0, 10);
-  // eslint-disable-next-line no-console
-  console.log('[FarmHub] dailyBriefing:', briefing ? `date=${briefing.date} actions=${briefing.actionItems?.length} invoices=${briefing.invoices?.length}` : 'undefined');
 
   return (
     <>
-      {/* Daily Briefing */}
-      {briefing && (
+      {/* Daily Briefing — always render the container so we can see if new code is live */}
+      {briefing ? (
         <div className="card" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', marginBottom: '0.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
             <div className="card-title" style={{ margin: 0 }}>📬 Farm Secretary Briefing</div>
@@ -151,6 +149,11 @@ export default function Dashboard({ db, persist }: Props) {
           {briefing.actionItems.length === 0 && briefing.invoices.length === 0 && briefing.information.length === 0 && (
             <div className="empty">Nothing farm-business related in today's inbox.</div>
           )}
+        </div>
+      ) : (
+        <div className="card" style={{ borderLeft: '4px solid var(--text-muted)', opacity: 0.6, marginBottom: '0.5rem' }}>
+          <div className="card-title" style={{ margin: 0 }}>📬 Farm Secretary Briefing</div>
+          <div className="empty" style={{ marginTop: 8 }}>No briefing loaded yet — sync with Supabase or run the morning task.</div>
         </div>
       )}
 
