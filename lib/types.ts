@@ -8,6 +8,7 @@ export interface Task {
   notes: string;
   done: boolean;
   doneDate: string | null;
+  briefingDate?: string;  // set when auto-created from daily briefing
 }
 
 export interface Cattle {
@@ -31,6 +32,7 @@ export interface Field {
 }
 
 export interface Finance {
+  id?: string;            // optional unique id (used for briefing-created entries)
   type: string;
   status: string;
   supplier: string;
@@ -44,6 +46,7 @@ export interface Finance {
   due: string;
   ref: string;
   amount: number;
+  briefingDate?: string;  // set when auto-created from daily briefing
 }
 
 export interface Scheme {
@@ -228,4 +231,5 @@ export interface DailyBriefing {
   invoices: BriefingInvoice[];
   information: BriefingInfo[];
   calendarEvents: string[];
+  processed?: boolean;    // true once action items & invoices have been added to tasks/finance
 }

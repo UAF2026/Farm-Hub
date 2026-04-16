@@ -67,80 +67,53 @@ export default function Dashboard({ db, persist }: Props) {
 
   return (
     <>
-      {/* Daily Briefing — always render the container so we can see if new code is live */}
+      {/* Daily Briefing */}
       {briefing ? (
         <div className="card" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', marginBottom: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+
+          {/* Header row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <div className="card-title" style={{ margin: 0 }}>📬 Farm Secretary Briefing</div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(briefing.date)}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{briefing.emailsReviewed} emails reviewed</div>
-              {!briefingIsToday && (
-                <div style={{ fontSize: 11, color: 'var(--amber, #d97706)', marginTop: 2 }}>⚠ Not today's briefing</div>
-              )}
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(briefing.date)} · {briefing.emailsReviewed} emails</div>
+              {!briefingIsToday && <div style={{ fontSize: 11, color: 'var(--amber, #d97706)' }}>⚠ Not today's briefing</div>}
             </div>
           </div>
 
+          {/* Processed status chips */}
+          {briefing.processed && (briefing.actionItems.length > 0 || briefing.invoices.length > 0) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              {briefing.actionItems.length > 0 && (
+                <span className="badge" style={{ background: 'var(--red, #dc2626)', color: '#fff', fontSize: 11 }}>
+                  ✓ {briefing.actionItems.length} task{briefing.actionItems.length !== 1 ? 's' : ''} added → Tasks
+                </span>
+              )}
+              {briefing.invoices.length > 0 && (
+                <span className="badge" style={{ background: 'var(--primary)', color: '#fff', fontSize: 11 }}>
+                  ✓ {briefing.invoices.length} invoice{briefing.invoices.length !== 1 ? 's' : ''} added → Finance
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Calendar events */}
           {briefing.calendarEvents.length > 0 && (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--primary)', marginBottom: 4 }}>📅 Calendar</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--primary)', marginBottom: 3 }}>📅 Calendar</div>
               {briefing.calendarEvents.map((ev, i) => (
-                <div key={i} style={{ fontSize: 13, padding: '3px 0', color: 'var(--text)' }}>{ev}</div>
+                <div key={i} style={{ fontSize: 13, padding: '2px 0', color: 'var(--text)' }}>{ev}</div>
               ))}
             </div>
           )}
 
-          {/* Action items */}
-          {briefing.actionItems.length > 0 && (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--red)', marginBottom: 4 }}>🔴 Action Required</div>
-              {briefing.actionItems.map((item, i) => (
-                <div key={i} className="row-item" style={{ alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="row-name">{item.subject}</div>
-                    <div className="row-sub">{item.from}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2 }}>{item.detail}</div>
-                    {item.deadline && (
-                      <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}>⏱ {item.deadline}</div>
-                    )}
-                  </div>
-                  <span className="badge bg-red" style={{ flexShrink: 0, marginLeft: 8 }}>Action</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Invoices */}
-          {briefing.invoices.length > 0 && (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 4 }}>📄 Invoices & Payments</div>
-              {briefing.invoices.map((inv, i) => (
-                <div key={i} className="row-item">
-                  <div style={{ flex: 1 }}>
-                    <div className="row-name">{inv.supplier}</div>
-                    <div className="row-sub">{[inv.ref && `Ref: ${inv.ref}`, inv.notes].filter(Boolean).join(' · ')}</div>
-                    {inv.due && <div className="row-sub">Due: {inv.due}</div>}
-                  </div>
-                  {inv.amount && (
-                    <div style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginLeft: 8 }}>{inv.amount}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Other information */}
+          {/* FYI information (not actions, not invoices) */}
           {briefing.information.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 4 }}>📬 Other Information</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 3 }}>📋 For Your Information</div>
               {briefing.information.map((item, i) => (
-                <div key={i} className="row-item">
-                  <div style={{ flex: 1 }}>
-                    <div className="row-name">{item.subject}</div>
-                    <div className="row-sub">{item.from}</div>
-                    {item.detail && <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2 }}>{item.detail}</div>}
-                  </div>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: i < briefing.information.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text)', flex: 1, paddingRight: 8 }}>{item.subject}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{item.from.replace(/<.*>/, '').trim()}</div>
                 </div>
               ))}
             </div>
@@ -151,9 +124,9 @@ export default function Dashboard({ db, persist }: Props) {
           )}
         </div>
       ) : (
-        <div className="card" style={{ borderLeft: '4px solid var(--text-muted)', opacity: 0.6, marginBottom: '0.5rem' }}>
+        <div className="card" style={{ borderLeft: '4px solid var(--text-muted)', opacity: 0.5, marginBottom: '0.5rem' }}>
           <div className="card-title" style={{ margin: 0 }}>📬 Farm Secretary Briefing</div>
-          <div className="empty" style={{ marginTop: 8 }}>No briefing loaded yet — sync with Supabase or run the morning task.</div>
+          <div className="empty" style={{ marginTop: 6 }}>No briefing yet — runs automatically each morning.</div>
         </div>
       )}
 

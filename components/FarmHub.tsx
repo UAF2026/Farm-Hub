@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FarmData, emptyDb, CloudConfig } from '@/lib/types';
+import { FarmData, emptyDb, CloudConfig, DailyBriefing, Task, Finance as FinanceType } from '@/lib/types';
 import { fetchFarmData, saveFarmData } from '@/lib/supabase';
+import { uid } from '@/lib/utils';
 import Header from './Header';
 import Nav from './Nav';
 import Dashboard from './sections/Dashboard';
@@ -23,6 +24,80 @@ import Settings from './sections/Settings';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
+
+/* ─── Briefing processing helpers ──────────────────────────────────────── */
+function parseGBP(s: string): number {
+  return parseFloat((s || '').replace(/[£,\s]/g, '')) || 0;
+}
+
+function parseNaturalDate(s: string): string {
+  if (!s) return '';
+  try {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  } catch {}
+  return '';
+}
+
+function processBriefing(db: FarmData): FarmData {
+  const briefing = db.dailyBriefing;
+  if (!briefing || briefing.processed) return db;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Build new tasks from action items, skipping any already added from this briefing date
+  const existingBriefingTaskIds = new Set(
+    db.tasks.filter(t => t.briefingDate === briefing.date).map(t => t.name)
+  );
+  const newTasks: Task[] = briefing.actionItems
+    .filter(item => !existingBriefingTaskIds.has(item.subject))
+    .map(item => ({
+      id: uid(),
+      name: item.subject,
+      date: parseNaturalDate(item.deadline || '') || today,
+      priority: 'High' as const,
+      category: 'Farm Secretary',
+      repeat: 'No repeat',
+      notes: `From: ${item.from}\n${item.detail}${item.deadline ? `\nDeadline: ${item.deadline}` : ''}`,
+      done: false,
+      doneDate: null,
+      briefingDate: briefing.date,
+    }));
+
+  // Build new finance entries from invoices, skipping duplicates by ref+supplier
+  const existingRefs = new Set(
+    db.finance.filter(f => f.briefingDate === briefing.date).map(f => `${f.supplier}|${f.ref}`)
+  );
+  const newFinance: FinanceType[] = briefing.invoices
+    .filter(inv => !existingRefs.has(`${inv.supplier}|${inv.ref}`))
+    .map(inv => {
+      const gross = parseGBP(inv.amount);
+      return {
+        id: uid(),
+        type: 'Bill',
+        status: 'Outstanding',
+        supplier: inv.supplier,
+        desc: inv.notes || inv.ref,
+        category: 'Farm Secretary',
+        date: today,
+        net: gross,
+        vat: 0,
+        gross,
+        vatRate: '0%',
+        due: parseNaturalDate(inv.due) || '',
+        ref: inv.ref,
+        amount: gross,
+        briefingDate: briefing.date,
+      };
+    });
+
+  return {
+    ...db,
+    tasks: [...db.tasks, ...newTasks],
+    finance: [...db.finance, ...newFinance],
+    dailyBriefing: { ...briefing, processed: true },
+  };
+}
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
 export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'settings';
@@ -64,8 +139,14 @@ export default function FarmHub() {
             const merged: FarmData = { ...emptyDb, ...data };
             (['cattle','fields','finance','schemes','activity','tasks','medicine','machinery','utilities','sprays','fertilisers','certificates','checklist'] as (keyof FarmData)[])
               .forEach(k => { if (!Array.isArray(merged[k])) (merged as any)[k] = []; });
-            setDb(merged);
-            try { localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch {}
+            // Auto-process new briefing: add action items → tasks, invoices → finance
+            const finalDb = processBriefing(merged);
+            setDb(finalDb);
+            try { localStorage.setItem(LS_KEY, JSON.stringify(finalDb)); } catch {}
+            // If briefing was just processed, sync the updated db back to Supabase
+            if (finalDb !== merged) {
+              saveFarmData(parsedCfg.url, parsedCfg.key, finalDb).catch(() => {});
+            }
           }
           setSyncStatus('ok');
           setSyncLabel('Synced');
