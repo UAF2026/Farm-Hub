@@ -64,6 +64,8 @@ export default function Dashboard({ db, persist }: Props) {
   /* ─── Briefing panel ─────────────────────────────────────────────────── */
   const briefing = db.dailyBriefing;
   const briefingIsToday = briefing?.date === new Date().toISOString().slice(0, 10);
+  // eslint-disable-next-line no-console
+  console.log('[FarmHub] dailyBriefing:', briefing ? `date=${briefing.date} actions=${briefing.actionItems?.length} invoices=${briefing.invoices?.length}` : 'undefined');
 
   return (
     <>
