@@ -11,6 +11,18 @@ export const dynamic = 'force-dynamic';
 
 const API_SECRET = process.env.API_SECRET;
 
+interface LinkEntry {
+  '@type'?: string;
+  rel?: string;
+  uri?: string;
+}
+
+function linkUri(links: unknown, rel: string): string | null {
+  if (!Array.isArray(links)) return null;
+  const found = (links as LinkEntry[]).find((l) => l && l.rel === rel);
+  return found?.uri || null;
+}
+
 interface JdField {
   id: string;
   name?: string;
@@ -89,18 +101,6 @@ export async function GET(req: NextRequest) {
     }
 
     const orgsOut: Array<Record<string, unknown>> = [];
-
-    interface LinkEntry {
-      '@type'?: string;
-      rel?: string;
-      uri?: string;
-    }
-
-    function linkUri(links: unknown, rel: string): string | null {
-      if (!Array.isArray(links)) return null;
-      const found = (links as LinkEntry[]).find((l) => l && l.rel === rel);
-      return found?.uri || null;
-    }
 
     for (const org of auth.orgs) {
       const live = orgsLive.find((o) => (o as { id?: string }).id === org.id) as
