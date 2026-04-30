@@ -71,13 +71,38 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Refresh the organisations record from Deere so we can see the live
+    // 'links' array — that's where Deere advertises which data types are
+    // currently accessible to this app.
+    let orgsLive: Array<Record<string, unknown>> = [];
+    try {
+      const orgsResp = await jdFetch<{ values?: Array<Record<string, unknown>> }>(
+        `/organizations`,
+        token,
+        auth.apiBase
+      );
+      orgsLive = orgsResp.values || [];
+    } catch (e) {
+      orgsLive = [
+        { error: e instanceof Error ? e.message : String(e) },
+      ];
+    }
+
     const orgsOut: Array<Record<string, unknown>> = [];
 
     for (const org of auth.orgs) {
+      const live = orgsLive.find((o) => (o as { id?: string }).id === org.id) as
+        | Record<string, unknown>
+        | undefined;
       const orgOut: Record<string, unknown> = {
         id: org.id,
         name: org.name,
         type: org.type,
+        // Deere's `links` array tells us which child resources we can hit.
+        // Look here for missing rels (e.g. 'field_operations', 'machineHours')
+        // to diagnose data-sharing gaps.
+        links: live?.links ?? null,
+        memberInterest: live?.memberInterest ?? null,
       };
 
       // -------- Fields --------
