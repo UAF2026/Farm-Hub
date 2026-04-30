@@ -90,25 +90,43 @@ export async function GET(req: NextRequest) {
 
     const orgsOut: Array<Record<string, unknown>> = [];
 
+    interface LinkEntry {
+      '@type'?: string;
+      rel?: string;
+      uri?: string;
+    }
+
+    function linkUri(links: unknown, rel: string): string | null {
+      if (!Array.isArray(links)) return null;
+      const found = (links as LinkEntry[]).find((l) => l && l.rel === rel);
+      return found?.uri || null;
+    }
+
     for (const org of auth.orgs) {
       const live = orgsLive.find((o) => (o as { id?: string }).id === org.id) as
         | Record<string, unknown>
         | undefined;
+      const liveLinks = live?.links;
       const orgOut: Record<string, unknown> = {
         id: org.id,
         name: org.name,
         type: org.type,
-        // Deere's `links` array tells us which child resources we can hit.
-        // Look here for missing rels (e.g. 'field_operations', 'machineHours')
-        // to diagnose data-sharing gaps.
-        links: live?.links ?? null,
-        memberInterest: live?.memberInterest ?? null,
+        // Use the URLs Deere tells us about, not URLs we construct.
+        // Different hosts (api.deere.com vs partnerapi.deere.com) gate
+        // different endpoints, so following the link rels is more reliable.
+        fieldsLink: linkUri(liveLinks, 'fields'),
+        fieldOperationsLink: linkUri(liveLinks, 'fieldOperation'),
+        manageConnectionLink: linkUri(liveLinks, 'manage_connection'),
       };
 
       // -------- Fields --------
+      // Prefer the link rel URL; fall back to the constructed URL if missing.
+      const fieldsUrl =
+        (linkUri(liveLinks, 'fields') as string | null) ||
+        `${auth.apiBase}/organizations/${org.id}/fields`;
       try {
         const fields = await jdFetch<JdFieldsResponse>(
-          `/organizations/${org.id}/fields?count=200`,
+          `${fieldsUrl}${fieldsUrl.includes('?') ? '&' : '?'}count=200`,
           token,
           auth.apiBase
         );
@@ -129,9 +147,15 @@ export async function GET(req: NextRequest) {
       }
 
       // -------- Field Operations --------
+      // The 'fieldOperation' (singular) link rel is the canonical URL.
+      // It points to api.deere.com rather than partnerapi.deere.com,
+      // and that host distinction matters — partnerapi 403s for some endpoints.
+      const opsUrl =
+        (linkUri(liveLinks, 'fieldOperation') as string | null) ||
+        `${auth.apiBase}/organizations/${org.id}/fieldOperations`;
       try {
         const ops = await jdFetch<JdFieldOperationsResponse>(
-          `/organizations/${org.id}/fieldOperations?count=200`,
+          `${opsUrl}${opsUrl.includes('?') ? '&' : '?'}count=200`,
           token,
           auth.apiBase
         );
