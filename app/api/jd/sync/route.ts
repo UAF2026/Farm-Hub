@@ -157,15 +157,27 @@ export async function GET(req: NextRequest) {
         /^\d{1,3}$/.test(n.trim()); // bare 1-3 digit names are auto-generated placeholders
 
       try {
-        // Re-fetch the full field list (not just the sample) so we can iterate all real fields.
-        const allFields = await jdFetch<JdFieldsResponse>(
-          `${fieldsUrl}${fieldsUrl.includes('?') ? '&' : '?'}count=500`,
-          token,
-          auth.apiBase
-        );
-        const realFields = (allFields.values || []).filter(
-          (f) => !f.archived && !isJunkName(f.name)
-        );
+        // Deere's /fields endpoint defaults to 10 items/page and ignores count > its hidden max.
+        // Follow `nextPage` links until exhausted (with a safety cap) to get all 116 fields.
+        const allValues: JdField[] = [];
+        let nextUrl: string | null =
+          `${fieldsUrl}${fieldsUrl.includes('?') ? '&' : '?'}count=100`;
+        let pages = 0;
+        while (nextUrl && pages < 30) {
+          const page = await jdFetch<JdFieldsResponse & { links?: LinkEntry[] }>(
+            nextUrl,
+            token,
+            auth.apiBase
+          );
+          if (page.values) allValues.push(...page.values);
+          const next = (page.links || []).find((l) => l && l.rel === 'nextPage');
+          nextUrl = next?.uri || null;
+          pages++;
+        }
+        const realFields = allValues.filter((f) => !f.archived && !isJunkName(f.name));
+        orgOut.fieldsPaginatedTotal = allValues.length;
+        orgOut.fieldsPagesFetched = pages;
+        orgOut.realFieldNames = realFields.map((f) => f.name).filter(Boolean);
 
         // To keep this diagnostic fast, sample the first 10 real fields.
         // The full sync will cover all of them.
