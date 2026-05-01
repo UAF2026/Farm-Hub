@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
         }
 
         orgOut.fieldsRealCount = realFields.length;
-        orgOut.fieldsJunkCount = (allFields.values || []).length - realFields.length;
+        orgOut.fieldsJunkCount = allValues.length - realFields.length;
         orgOut.fieldsProbed = fieldsToProbe.length;
         orgOut.fieldOperationsTotalSampled = totalOps;
         orgOut.fieldOperationsByType = byType;
