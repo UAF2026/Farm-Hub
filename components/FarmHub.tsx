@@ -21,6 +21,7 @@ import Utilities from './sections/Utilities';
 import Compliance from './sections/Compliance';
 import FieldMap from './sections/FieldMap';
 import Settings from './sections/Settings';
+import JohnDeere from './sections/JohnDeere';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
@@ -100,7 +101,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -268,6 +269,7 @@ export default function FarmHub() {
         {section === 'machinery' && <Machinery db={db} persist={persist} addActivity={addActivity} />}
         {section === 'utilities' && <Utilities db={db} persist={persist} addActivity={addActivity} />}
         {section === 'compliance' && <Compliance db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'johndeere' && <JohnDeere db={db} persist={persist} />}
         {section === 'settings' && (
           <Settings
             db={db} persist={persist} cfg={cfg} lastSynced={lastSynced}

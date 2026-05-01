@@ -163,6 +163,36 @@ export interface ChecklistItem {
   lastChecked: string;
 }
 
+/* ─── John Deere Operations Center ─────────────────────────────────────── */
+export interface JdOperationProduct {
+  name: string;
+  type: string;          // FERTILIZER | CHEMICAL | SEED
+  tankMix?: boolean;
+}
+
+export interface JdOperation {
+  id: string;
+  type: string;          // seeding | harvest | application | tillage
+  fieldId: string;
+  fieldName: string;
+  startDate: string;
+  endDate?: string;
+  cropSeason?: string;
+  cropName?: string;     // e.g. "WHEAT_EURO_WTR"
+  varieties?: string[];
+  products?: JdOperationProduct[];
+  tillageType?: string;
+  machineVin?: string;
+  machineType?: string;
+}
+
+export interface JdSyncStatus {
+  syncedAt: string;
+  fieldsTouched: number;
+  operationsTotal: number;
+  since: string;         // ISO date — operations from this date onwards
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -178,6 +208,8 @@ export interface FarmData {
   certificates: Certificate[];
   checklist: ChecklistItem[];
   dailyBriefing?: DailyBriefing;
+  jdOperations?: JdOperation[];
+  jdSyncStatus?: JdSyncStatus;
 }
 
 export const emptyDb: FarmData = {
