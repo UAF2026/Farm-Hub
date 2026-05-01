@@ -190,6 +190,9 @@ export async function GET(req: NextRequest) {
         let totalOps = 0;
         let firstErr: string | null = null;
 
+        // Track one operation ID we can fetch in detail afterwards.
+        let probeOperationId: string | null = null;
+
         for (const f of fieldsToProbe) {
           try {
             const ops = await jdFetch<JdFieldOperationsResponse>(
@@ -204,6 +207,7 @@ export async function GET(req: NextRequest) {
               byType[t] = (byType[t] || 0) + 1;
               const y = op.cropYear ? String(op.cropYear) : 'no-year';
               byCropYear[y] = (byCropYear[y] || 0) + 1;
+              if (!probeOperationId && op.id) probeOperationId = op.id;
             }
             opsByField.push({
               fieldId: f.id,
@@ -226,6 +230,32 @@ export async function GET(req: NextRequest) {
             if (!firstErr) firstErr = msg;
             opsByField.push({ fieldId: f.id, fieldName: f.name, error: msg });
           }
+        }
+
+        // Dig into ONE operation in full detail to see what's actually available
+        // beyond the list-level summary (crop/variety/yield/products/etc.).
+        if (probeOperationId) {
+          // Try both common API hosts, since list calls succeed against api.deere.com
+          // but per-resource calls sometimes use a different base.
+          const detailUrls = [
+            `https://api.deere.com/platform/fieldOperations/${probeOperationId}`,
+            `${auth.apiBase}/fieldOperations/${probeOperationId}`,
+          ];
+          const detailResults: Array<Record<string, unknown>> = [];
+          for (const url of detailUrls) {
+            try {
+              const detail = await jdFetch<unknown>(url, token, auth.apiBase);
+              detailResults.push({ url, body: detail });
+              break; // succeed on first working URL
+            } catch (e) {
+              detailResults.push({
+                url,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            }
+          }
+          orgOut.singleOperationDetail = detailResults;
+          orgOut.probeOperationId = probeOperationId;
         }
 
         orgOut.fieldsRealCount = realFields.length;
