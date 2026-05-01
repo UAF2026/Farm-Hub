@@ -35,6 +35,7 @@ interface JdField {
 interface JdFieldsResponse {
   total?: number;
   values?: JdField[];
+  links?: LinkEntry[];
 }
 
 interface JdFieldOperation {
@@ -164,7 +165,7 @@ export async function GET(req: NextRequest) {
           `${fieldsUrl}${fieldsUrl.includes('?') ? '&' : '?'}count=100`;
         let pages = 0;
         while (nextUrl && pages < 30) {
-          const page = await jdFetch<JdFieldsResponse & { links?: LinkEntry[] }>(
+          const page: JdFieldsResponse = await jdFetch<JdFieldsResponse>(
             nextUrl,
             token,
             auth.apiBase
