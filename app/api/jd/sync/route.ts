@@ -146,45 +146,83 @@ export async function GET(req: NextRequest) {
         orgOut.fieldsError = e instanceof Error ? e.message : String(e);
       }
 
-      // -------- Field Operations --------
-      // The 'fieldOperation' (singular) link rel is the canonical URL.
-      // It points to api.deere.com rather than partnerapi.deere.com,
-      // and that host distinction matters — partnerapi 403s for some endpoints.
-      const opsUrl =
-        (linkUri(liveLinks, 'fieldOperation') as string | null) ||
-        `${auth.apiBase}/organizations/${org.id}/fieldOperations`;
+      // -------- Field Operations (per Mubin @ Deere support: per-field, not org-wide) --------
+      // /organizations/{orgId}/fieldOperations does NOT exist as a usable endpoint.
+      // The correct endpoint is /organizations/{orgId}/fields/{fieldId}/fieldOperations
+      // We iterate fields with sensible names, skipping the auto-generated "---" / "1" placeholders.
+      const isJunkName = (n?: string) =>
+        !n ||
+        n.trim() === '' ||
+        n.trim() === '---' ||
+        /^\d{1,3}$/.test(n.trim()); // bare 1-3 digit names are auto-generated placeholders
+
       try {
-        const ops = await jdFetch<JdFieldOperationsResponse>(
-          `${opsUrl}${opsUrl.includes('?') ? '&' : '?'}count=200`,
+        // Re-fetch the full field list (not just the sample) so we can iterate all real fields.
+        const allFields = await jdFetch<JdFieldsResponse>(
+          `${fieldsUrl}${fieldsUrl.includes('?') ? '&' : '?'}count=500`,
           token,
           auth.apiBase
         );
-        const list = ops.values || [];
+        const realFields = (allFields.values || []).filter(
+          (f) => !f.archived && !isJunkName(f.name)
+        );
+
+        // To keep this diagnostic fast, sample the first 10 real fields.
+        // The full sync will cover all of them.
+        const fieldsToProbe = realFields.slice(0, 10);
+
+        const opsByField: Array<Record<string, unknown>> = [];
         const byType: Record<string, number> = {};
         const byCropYear: Record<string, number> = {};
-        for (const op of list) {
-          const t = op.fieldOperationType || 'unknown';
-          byType[t] = (byType[t] || 0) + 1;
-          const y = op.cropYear ? String(op.cropYear) : 'no-year';
-          byCropYear[y] = (byCropYear[y] || 0) + 1;
+        let totalOps = 0;
+        let firstErr: string | null = null;
+
+        for (const f of fieldsToProbe) {
+          try {
+            const ops = await jdFetch<JdFieldOperationsResponse>(
+              `${auth.apiBase}/organizations/${org.id}/fields/${f.id}/fieldOperations?count=200`,
+              token,
+              auth.apiBase
+            );
+            const list = ops.values || [];
+            totalOps += list.length;
+            for (const op of list) {
+              const t = op.fieldOperationType || 'unknown';
+              byType[t] = (byType[t] || 0) + 1;
+              const y = op.cropYear ? String(op.cropYear) : 'no-year';
+              byCropYear[y] = (byCropYear[y] || 0) + 1;
+            }
+            opsByField.push({
+              fieldId: f.id,
+              fieldName: f.name,
+              opsCount: list.length,
+              firstThree: list.slice(0, 3).map((o) => ({
+                id: o.id,
+                type: o.fieldOperationType,
+                startDate: o.startDate,
+                endDate: o.endDate,
+                cropYear: o.cropYear,
+                crop: o.crop?.name,
+                variety: o.variety?.name,
+                totalArea: o.totalArea,
+                totalYield: o.totalYield,
+              })),
+            });
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (!firstErr) firstErr = msg;
+            opsByField.push({ fieldId: f.id, fieldName: f.name, error: msg });
+          }
         }
-        orgOut.fieldOperationsTotal = ops.total ?? list.length;
+
+        orgOut.fieldsRealCount = realFields.length;
+        orgOut.fieldsJunkCount = (allFields.values || []).length - realFields.length;
+        orgOut.fieldsProbed = fieldsToProbe.length;
+        orgOut.fieldOperationsTotalSampled = totalOps;
         orgOut.fieldOperationsByType = byType;
         orgOut.fieldOperationsByCropYear = byCropYear;
-        orgOut.fieldOperationsSample = list.slice(0, 10).map((o) => ({
-          id: o.id,
-          type: o.fieldOperationType,
-          startDate: o.startDate,
-          endDate: o.endDate,
-          cropYear: o.cropYear,
-          fieldId: o.field?.id,
-          fieldName: o.field?.name,
-          crop: o.crop?.name,
-          variety: o.variety?.name,
-          totalArea: o.totalArea,
-          totalYield: o.totalYield,
-          averageYield: o.averageYield,
-        }));
+        orgOut.fieldOperationsByField = opsByField;
+        if (firstErr) orgOut.fieldOperationsFirstError = firstErr;
       } catch (e) {
         orgOut.fieldOperationsError = e instanceof Error ? e.message : String(e);
       }
