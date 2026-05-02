@@ -1,9 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FarmData } from '@/lib/types';
 import type { Field } from '@/lib/types';
 import { fmtDate, uid } from '@/lib/utils';
+import { buildJdSummaries } from '@/lib/jdSummaries';
+
+function fmtShortDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+}
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
 
@@ -84,6 +92,14 @@ export default function Crops({ db, persist, addActivity }: Props) {
   const [editIdx, setEditIdx] = useState<number | null>(null);
 
   const fields = db.fields || [];
+
+  // Build per-field summaries from John Deere operations data, matched by
+  // exact-or-normalised field name. Recomputes only when the underlying ops
+  // change, so this is cheap.
+  const jdMatch = useMemo(
+    () => buildJdSummaries(fields, db.jdOperations || []),
+    [fields, db.jdOperations]
+  );
 
   const totalHa = fields.reduce((a, b) => a + (b.area || 0), 0);
   const inCropHa = fields.filter(f => f.status === 'In crop').reduce((a, b) => a + (b.area || 0), 0);
@@ -176,23 +192,93 @@ export default function Crops({ db, persist, addActivity }: Props) {
       </div>
 
       <div className="card">
-        <div className="card-title">Fields</div>
+        <div className="card-title">
+          Fields
+          {db.jdOperations && db.jdOperations.length > 0 && (
+            <span style={{ float: 'right', fontSize: 12, fontWeight: 'normal', color: '#666' }}>
+              JD-matched: {Object.keys(jdMatch.summariesByHubName).length} / {fields.length}
+            </span>
+          )}
+        </div>
         {fields.length === 0
           ? <div className="empty">No fields registered.</div>
-          : fields.map((f, i) => (
-            <div key={i} className="row-item" onClick={() => editField(i)} style={{ cursor: 'pointer' }}>
-              <div style={{ flex: 1 }}>
-                <div className="row-name">{f.name}</div>
-                <div className="row-sub">{f.area.toFixed(1)}ha ({(f.area * 2.471).toFixed(1)}ac) · {f.crop || 'No crop'}{f.notes ? ' · ' + f.notes : ''}</div>
+          : fields.map((f, i) => {
+            const jd = jdMatch.summariesByHubName[f.name];
+            return (
+              <div key={i} className="row-item" onClick={() => editField(i)} style={{ cursor: 'pointer' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="row-name">
+                    {f.name}
+                    {jd?.currentVariety && (
+                      <span style={{ marginLeft: 8, color: '#2e7d32', fontWeight: 600, fontSize: 13 }}>
+                        · {jd.currentCrop || ''} {jd.currentVariety && `— ${jd.currentVariety}`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="row-sub">
+                    {f.area.toFixed(1)}ha ({(f.area * 2.471).toFixed(1)}ac) · {f.crop || 'No crop'}
+                    {f.notes ? ' · ' + f.notes : ''}
+                  </div>
+                  {jd && (
+                    <div className="row-sub" style={{ color: '#1565c0', marginTop: 4, fontSize: 12 }}>
+                      JD: {jd.totalOps} ops
+                      {jd.latestSeeding && (
+                        <> · Drilled {fmtShortDate(jd.latestSeeding.date)}
+                          {jd.latestSeeding.variety && ` (${jd.latestSeeding.variety})`}</>
+                      )}
+                      {jd.latestHarvest && (
+                        <> · Harvest {fmtShortDate(jd.latestHarvest.date)}</>
+                      )}
+                      {jd.recentApplications.length > 0 && (
+                        <> · Last app {fmtShortDate(jd.recentApplications[0].date)}</>
+                      )}
+                      {jd.matchType !== 'exact' && (
+                        <span style={{ marginLeft: 6, color: '#888', fontStyle: 'italic' }}>
+                          ({jd.matchType} match: {jd.jdFieldNames.join(', ')})
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <span className={`badge ${getStatusColor(f.status)}`}>{f.status}</span>
+                  <button className="del-btn" onClick={(e) => { e.stopPropagation(); deleteField(i); }}>×</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                <span className={`badge ${getStatusColor(f.status)}`}>{f.status}</span>
-                <button className="del-btn" onClick={(e) => { e.stopPropagation(); deleteField(i); }}>×</button>
-              </div>
-            </div>
-          ))
+            );
+          })
         }
       </div>
+
+      {db.jdOperations && db.jdOperations.length > 0 && (
+        <div className="card">
+          <div className="card-title">JD field-name reconciliation</div>
+          <div className="row-sub" style={{ marginBottom: 8 }}>
+            {jdMatch.unmatchedHubFields.length} Hub fields with no JD match,{' '}
+            {jdMatch.unmatchedJdFields.length} JD fields not assigned to any Hub field.
+          </div>
+          <details>
+            <summary style={{ cursor: 'pointer' }}>
+              Hub fields with no JD operations ({jdMatch.unmatchedHubFields.length})
+            </summary>
+            <div style={{ padding: 8, color: '#666', fontSize: 13 }}>
+              {jdMatch.unmatchedHubFields.length === 0
+                ? <em>All Hub fields matched.</em>
+                : jdMatch.unmatchedHubFields.join(', ')}
+            </div>
+          </details>
+          <details>
+            <summary style={{ cursor: 'pointer' }}>
+              JD fields with operations but no Hub match ({jdMatch.unmatchedJdFields.length})
+            </summary>
+            <div style={{ padding: 8, color: '#666', fontSize: 13 }}>
+              {jdMatch.unmatchedJdFields.length === 0
+                ? <em>All JD fields matched.</em>
+                : jdMatch.unmatchedJdFields.join(', ')}
+            </div>
+          </details>
+        </div>
+      )}
 
       <div className="grid2">
         <div className="link-card">
