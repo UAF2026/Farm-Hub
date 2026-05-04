@@ -73,7 +73,7 @@ function describeOp(op: JdOperation): string {
   return op.type;
 }
 
-export default function JohnDeere({ db }: Props) {
+export default function JohnDeere({ db, persist }: Props) {
   const ops = db.jdOperations || [];
   const sync = db.jdSyncStatus;
 
