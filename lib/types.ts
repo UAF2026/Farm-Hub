@@ -120,6 +120,8 @@ export interface SprayRecord {
   reEntryInterval: number;
   purpose: string;
   notes: string;
+  source?: string;     // 'jd' for JD-imported records
+  jdOpId?: string;     // John Deere operation ID (for dedupe on re-import)
 }
 
 export interface FertiliserRecord {
@@ -140,6 +142,8 @@ export interface FertiliserRecord {
   method: string;
   soilTest: string;
   notes: string;
+  source?: string;     // 'jd' for JD-imported records
+  jdOpId?: string;     // John Deere operation ID (for dedupe on re-import)
 }
 
 export interface Certificate {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { FarmData, JdOperation } from '@/lib/types';
+import { buildAssuranceImport } from '@/lib/jdAssurance';
 
 interface Props {
   db: FarmData;
@@ -119,6 +120,43 @@ export default function JohnDeere({ db }: Props) {
     return { byType, fieldsCount: fieldsTouched.size, total: filtered.length };
   }, [filtered]);
 
+  // Build the import preview for Farm Assurance — what could land in the
+  // Sprays / Fertilisers logs from the JD applications, after deduping
+  // anything we've already imported.
+  const importPlan = useMemo(
+    () =>
+      buildAssuranceImport({
+        jdOps: ops,
+        hubFields: db.fields || [],
+        existingSprays: db.sprays || [],
+        existingFertilisers: db.fertilisers || [],
+      }),
+    [ops, db.fields, db.sprays, db.fertilisers]
+  );
+
+  const [importMsg, setImportMsg] = useState<string>('');
+
+  function runImport() {
+    if (importPlan.newSprays.length === 0 && importPlan.newFertilisers.length === 0) {
+      setImportMsg('Nothing to import — JD applications are already reflected in your records.');
+      return;
+    }
+    const msg = `Import ${importPlan.newSprays.length} spray${
+      importPlan.newSprays.length === 1 ? '' : 's'
+    } and ${importPlan.newFertilisers.length} fertiliser${
+      importPlan.newFertilisers.length === 1 ? '' : 's'
+    } into the Hub? Existing records won't be touched; rate/area/operator left blank for you to fill.`;
+    if (!confirm(msg)) return;
+    persist({
+      ...db,
+      sprays: [...(db.sprays || []), ...importPlan.newSprays],
+      fertilisers: [...(db.fertilisers || []), ...importPlan.newFertilisers],
+    });
+    setImportMsg(
+      `Imported ${importPlan.newSprays.length} sprays and ${importPlan.newFertilisers.length} fertilisers. Visit Compliance to review.`
+    );
+  }
+
   async function runSync() {
     setBusy(true);
     setSyncMsg('Syncing — this can take up to a minute…');
@@ -167,6 +205,57 @@ export default function JohnDeere({ db }: Props) {
       {syncMsg && (
         <div style={{ marginBottom: 16, padding: 8, background: '#f5f5f5', borderLeft: '3px solid #888' }}>
           {syncMsg}
+        </div>
+      )}
+
+      {ops.length > 0 && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            border: '1px solid #d0e3f0',
+            borderRadius: 6,
+            background: '#f4f9fd',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 14 }}>Farm Assurance import</strong>
+            <span style={{ color: '#555', fontSize: 13 }}>
+              {importPlan.newSprays.length} spray{importPlan.newSprays.length === 1 ? '' : 's'} and{' '}
+              {importPlan.newFertilisers.length} fertiliser
+              {importPlan.newFertilisers.length === 1 ? '' : 's'} ready to add to your records.
+              {importPlan.skipped.duplicate > 0 && (
+                <> Skipping {importPlan.skipped.duplicate} already imported.</>
+              )}
+              {importPlan.skipped.unmatchedField > 0 && (
+                <> {importPlan.skipped.unmatchedField} ops on JD fields with no Hub match.</>
+              )}
+            </span>
+            <button
+              onClick={runImport}
+              className="btn"
+              disabled={
+                importPlan.newSprays.length === 0 && importPlan.newFertilisers.length === 0
+              }
+              style={{ marginLeft: 'auto' }}
+            >
+              Import to Hub
+            </button>
+          </div>
+          {importMsg && (
+            <div style={{ marginTop: 8, padding: 6, background: '#fff', fontSize: 13 }}>
+              {importMsg}
+            </div>
+          )}
+          {importPlan.unmatchedJdFields.length > 0 && (
+            <details style={{ marginTop: 8, fontSize: 12, color: '#555' }}>
+              <summary style={{ cursor: 'pointer' }}>
+                JD fields with applications but no Hub match (
+                {importPlan.unmatchedJdFields.length})
+              </summary>
+              <div style={{ padding: 6 }}>{importPlan.unmatchedJdFields.join(', ')}</div>
+            </details>
+          )}
         </div>
       )}
 
