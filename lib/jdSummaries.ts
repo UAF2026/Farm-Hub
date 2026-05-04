@@ -13,7 +13,7 @@ export interface JdFieldSummary {
   hubFieldName: string;
   jdFieldName: string;        // the JD name we matched on
   jdFieldNames: string[];     // all JD names contributing (for override / multi-match)
-  matchType: 'exact' | 'normalised' | 'override';
+  matchType: 'exact' | 'normalised' | 'fuzzy' | 'override';
   totalOps: number;
   latestSeeding?: { date: string; cropName?: string; variety?: string };
   latestHarvest?: { date: string; cropName?: string; variety?: string };
@@ -46,16 +46,55 @@ export function prettyCropName(code?: string): string | undefined {
 }
 
 // Normalise a field name for lenient matching:
-//   "Behind Chris's"  → "behindchriss"
-//   "BIX-Soundess"    → "soundess"
-//   "behind chris`s"  → "behindchriss"
-//   "Soundees 1"      → "soundees"   (trailing digit/letter suffix stripped)
+//   "Behind Chris's"      → "behindchriss"
+//   "BIX-Soundess"        → "soundess"
+//   "behind chris`s"      → "behindchriss"
+//   "Soundees 1"          → "soundees"      (trailing digit/letter suffix stripped)
+//   "Behind the village"  → "behindvillage" (stopwords stripped)
+//   "Blackdean and pages" → "blackdeanpages"
+const STOPWORDS = ['the', 'and', 'a', 'of'];
 function normaliseName(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/^bix[-\s]+/i, '')             // strip BIX- prefix
+  // Strip stopwords as whole words first (before removing whitespace).
+  let out = s.toLowerCase().replace(/^bix[-\s]+/i, '');
+  for (const sw of STOPWORDS) {
+    out = out.replace(new RegExp(`\\b${sw}\\b`, 'g'), ' ');
+  }
+  return out
     .replace(/[^a-z0-9]/g, '')              // letters + digits only
     .replace(/[\d]+[a-z]?$/, '');           // trailing "1", "1a", "12" suffix
+}
+
+// Levenshtein edit distance between two short strings — used for fuzzy
+// match-of-last-resort when exact and normalised matches both fail.
+// Iterative with two rolling rows; O(n*m) time, O(min) memory.
+function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  // Quick reject: if length differs by more than the threshold we'd accept,
+  // distance is at least the length difference, so skip detailed calculation.
+  if (Math.abs(a.length - b.length) > 4) return 99;
+  let prev = new Array(b.length + 1);
+  let curr = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[b.length];
+}
+
+// Acceptable edit distance grows with the length of the string being matched.
+// Generous enough to bridge "Rowdy"↔"Rowdow" (2 edits, len 5/6) and
+// "Soundees"↔"Soundess" (2 edits) without false-positive collisions on
+// common short field names.
+function acceptableEditDistance(len: number): number {
+  if (len <= 12) return 2;
+  return 3;
 }
 
 interface MatchResult {
@@ -85,6 +124,19 @@ function findJdMatchesFor(
   if (!hubNorm) return null;
   const normalised = jdFieldNames.filter((n) => normaliseName(n) === hubNorm);
   if (normalised.length) return { jdFieldNames: normalised, matchType: 'normalised' };
+
+  // 4. Fuzzy match — Levenshtein-distance ≤ threshold over normalised forms.
+  // Catches typos / misspellings: Wanscome↔Wanscombe, Soundees↔Soundess,
+  // Hangins↔Hangings, Rowdow↔Rowdy. We aggregate every JD field within the
+  // threshold (so "Soundees1/2/3" still all map to one Hub field) and pick
+  // the closest distance overall as the result quality signal.
+  const threshold = acceptableEditDistance(hubNorm.length);
+  const fuzzy = jdFieldNames.filter((n) => {
+    const nNorm = normaliseName(n);
+    if (!nNorm || nNorm === hubNorm) return false;
+    return editDistance(nNorm, hubNorm) <= threshold;
+  });
+  if (fuzzy.length) return { jdFieldNames: fuzzy, matchType: 'fuzzy' };
 
   return null;
 }
