@@ -72,19 +72,24 @@ function processBriefing(db: FarmData): FarmData {
   const newFinance: FinanceType[] = briefing.invoices
     .filter(inv => !existingRefs.has(`${inv.supplier}|${inv.ref}`))
     .map(inv => {
-      const gross = parseGBP(inv.amount);
+      // Prefer the structured numeric fields if the skill provided them;
+      // otherwise parse the legacy "amount" string (e.g. "£1,234.56").
+      const gross = inv.gross ?? parseGBP(inv.amount);
+      const net = inv.net ?? gross;
+      const vat = inv.vat ?? Math.max(0, gross - net);
+      const invoiceDate = inv.invoiceDate || today;
       return {
         id: uid(),
         type: 'Bill',
         status: 'Outstanding',
         supplier: inv.supplier,
         desc: inv.notes || inv.ref,
-        category: 'Farm Secretary',
-        date: today,
-        net: gross,
-        vat: 0,
+        category: inv.category || 'Farm Secretary',
+        date: invoiceDate,
+        net,
+        vat,
         gross,
-        vatRate: '0%',
+        vatRate: inv.vatRate || (vat > 0 ? '20%' : '0%'),
         due: parseNaturalDate(inv.due) || '',
         ref: inv.ref,
         amount: gross,

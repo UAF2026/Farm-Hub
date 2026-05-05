@@ -265,9 +265,18 @@ export interface BriefingAction {
 export interface BriefingInvoice {
   supplier: string;
   ref: string;
-  amount: string;
+  amount: string;       // human-readable e.g. "£1,234.56" or "See PDF"
   due: string;
   notes: string;
+  // Enriched fields written by the v2 farm-secretary-daily skill. Each is
+  // optional so older briefings remain readable.
+  net?: number;          // numeric £, exclusive of VAT
+  vat?: number;          // numeric £, the VAT amount
+  gross?: number;        // numeric £, total payable
+  vatRate?: string;      // e.g. "20%", "0%", "Mixed"
+  category?: string;     // e.g. "Agronomy", "Fuel", "Vet", "Insurance"
+  invoiceDate?: string;  // ISO YYYY-MM-DD, the date on the invoice
+  paymentMethod?: string;// "BACS", "Direct Debit", "Card", etc.
 }
 
 export interface BriefingInfo {
