@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { FarmData, JdOperation } from '@/lib/types';
-import { buildAssuranceImport } from '@/lib/jdAssurance';
+import { buildAssuranceImport, refreshAssuranceFromMeasurements } from '@/lib/jdAssurance';
 
 interface Props {
   db: FarmData;
@@ -177,6 +177,45 @@ export default function JohnDeere({ db, persist }: Props) {
     }
   }
 
+  async function runMeasurementSync() {
+    setBusy(true);
+    setSyncMsg('Pulling rates, areas, and yields from John Deere — this can take a minute…');
+    try {
+      const res = await fetch('/api/jd/sync-measurements', { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok || !body.ok) {
+        setSyncMsg(`Measurement sync failed: ${body.error || res.statusText}`);
+      } else {
+        setSyncMsg(
+          `Measurement sync done: ${body.withMeasurements} of ${body.candidatesProcessed} ops got data ` +
+            `(${body.totalOpsWithMeasurementsNow}/${body.totalOps} total now have measurements). ` +
+            `Refresh the page, then click "Update existing records" below to back-fill rates into your spray + fert logs.`
+        );
+      }
+    } catch (e) {
+      setSyncMsg(`Measurement sync error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function runRefreshExisting() {
+    const { sprays, fertilisers, spraysUpdated, fertilisersUpdated } =
+      refreshAssuranceFromMeasurements(ops, db.sprays || [], db.fertilisers || []);
+    if (spraysUpdated === 0 && fertilisersUpdated === 0) {
+      setImportMsg(
+        'No existing records updated. Either measurements are not yet synced, or rates/areas are already filled in.'
+      );
+      return;
+    }
+    persist({ ...db, sprays, fertilisers });
+    setImportMsg(
+      `Updated ${spraysUpdated} spray${spraysUpdated === 1 ? '' : 's'} and ${fertilisersUpdated} fertiliser${
+        fertilisersUpdated === 1 ? '' : 's'
+      } with rate/area/total from JD measurements.`
+    );
+  }
+
   return (
     <section className="card">
       <h2>John Deere Operations</h2>
@@ -199,6 +238,14 @@ export default function JohnDeere({ db, persist }: Props) {
           style={{ marginLeft: 'auto' }}
         >
           {busy ? 'Syncing…' : 'Sync now'}
+        </button>
+        <button
+          onClick={runMeasurementSync}
+          disabled={busy}
+          className="btn"
+          title="Pull application rates, seeding rates, harvest yields, areas covered"
+        >
+          {busy ? '…' : 'Sync measurements'}
         </button>
       </div>
 
@@ -240,6 +287,13 @@ export default function JohnDeere({ db, persist }: Props) {
               style={{ marginLeft: 'auto' }}
             >
               Import to Hub
+            </button>
+            <button
+              onClick={runRefreshExisting}
+              className="btn"
+              title="Update existing JD-imported records with rate/area/total from synced measurements (won't touch fields you've manually edited)"
+            >
+              Update existing records
             </button>
           </div>
           {importMsg && (

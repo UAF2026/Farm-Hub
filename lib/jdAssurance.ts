@@ -138,6 +138,21 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
     const fertProducts = op.products.filter(isFertiliserProduct);
     const sprayProducts = op.products.filter((p) => !isFertiliserProduct(p));
 
+    // Pull rate/area/total from JD measurements if they've been synced.
+    const m = op.measurements;
+    const ratePerHa = m?.ratePerHa ?? 0;
+    const area = m?.area ?? 0;
+    const totalApplied = m?.totalApplied ?? 0;
+    const measurementNote = m
+      ? `Rate ${m.ratePerHa?.toFixed(1) ?? '?'} ${m.rateUnit ?? ''}, area ${
+          m.area?.toFixed(2) ?? '?'
+        } ha, total ${m.totalApplied?.toFixed(0) ?? '?'} ${m.totalUnit ?? ''}.${
+          m.targetRatePerHa
+            ? ` Target ${m.targetRatePerHa.toFixed(1)} ${m.rateUnit ?? ''}.`
+            : ''
+        }`
+      : 'Rate/area to be confirmed (measurements not yet synced).';
+
     if (fertProducts.length > 0) {
       const productName = fertProducts.map((p) => p.name).join(' + ');
       const totalN = fertProducts.reduce((acc, p) => acc + sniffN(p.name), 0);
@@ -153,13 +168,13 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
         p: 0,
         k: 0,
         s: totalS,
-        ratePerHa: 0,
-        area: 0,
-        totalApplied: 0,
+        ratePerHa,
+        area,
+        totalApplied,
         operator: '',
         method: 'Spreader',
         soilTest: '',
-        notes: `Imported from John Deere — JD field "${op.fieldName}". Rate/area to be confirmed.`,
+        notes: `Imported from John Deere — JD field "${op.fieldName}". ${measurementNote}`,
         source: 'jd',
         jdOpId: op.id,
       });
@@ -174,10 +189,10 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
         crop: '',
         product: productName,
         batch: '',
-        dose: 0,
-        doseUnit: 'l/ha',
-        area: 0,
-        totalProduct: 0,
+        dose: ratePerHa,
+        doseUnit: m?.rateUnit || 'l/ha',
+        area,
+        totalProduct: totalApplied,
         waterVolume: 0,
         operator: '',
         basisCertRef: '',
@@ -186,7 +201,7 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
         harvestInterval: 0,
         reEntryInterval: 0,
         purpose: '',
-        notes: `Imported from John Deere — JD field "${op.fieldName}". Rate/area/conditions to be confirmed.`,
+        notes: `Imported from John Deere — JD field "${op.fieldName}". ${measurementNote}`,
         source: 'jd',
         jdOpId: op.id,
       });
@@ -199,4 +214,78 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
     skipped,
     unmatchedJdFields: Array.from(unmatchedJdFields).sort(),
   };
+}
+
+/**
+ * Walk existing JD-imported records and update their rate/area/total fields
+ * from freshly synced measurements. Only updates fields that are still 0/blank
+ * (so we never clobber values you've manually filled in). Returns the new
+ * arrays plus a count of updates.
+ */
+export interface RefreshResult {
+  sprays: SprayRecord[];
+  fertilisers: FertiliserRecord[];
+  spraysUpdated: number;
+  fertilisersUpdated: number;
+}
+
+export function refreshAssuranceFromMeasurements(
+  jdOps: JdOperation[],
+  existingSprays: SprayRecord[],
+  existingFertilisers: FertiliserRecord[]
+): RefreshResult {
+  const opById = new Map<string, JdOperation>();
+  for (const op of jdOps) opById.set(op.id, op);
+
+  let spraysUpdated = 0;
+  let fertilisersUpdated = 0;
+
+  const sprays = existingSprays.map((rec) => {
+    if (rec.source !== 'jd' || !rec.jdOpId) return rec;
+    const op = opById.get(rec.jdOpId);
+    const m = op?.measurements;
+    if (!m) return rec;
+    const next = { ...rec };
+    let touched = false;
+    if (!next.dose && m.ratePerHa != null) {
+      next.dose = m.ratePerHa;
+      next.doseUnit = m.rateUnit || next.doseUnit;
+      touched = true;
+    }
+    if (!next.area && m.area != null) {
+      next.area = m.area;
+      touched = true;
+    }
+    if (!next.totalProduct && m.totalApplied != null) {
+      next.totalProduct = m.totalApplied;
+      touched = true;
+    }
+    if (touched) spraysUpdated++;
+    return next;
+  });
+
+  const fertilisers = existingFertilisers.map((rec) => {
+    if (rec.source !== 'jd' || !rec.jdOpId) return rec;
+    const op = opById.get(rec.jdOpId);
+    const m = op?.measurements;
+    if (!m) return rec;
+    const next = { ...rec };
+    let touched = false;
+    if (!next.ratePerHa && m.ratePerHa != null) {
+      next.ratePerHa = m.ratePerHa;
+      touched = true;
+    }
+    if (!next.area && m.area != null) {
+      next.area = m.area;
+      touched = true;
+    }
+    if (!next.totalApplied && m.totalApplied != null) {
+      next.totalApplied = m.totalApplied;
+      touched = true;
+    }
+    if (touched) fertilisersUpdated++;
+    return next;
+  });
+
+  return { sprays, fertilisers, spraysUpdated, fertilisersUpdated };
 }

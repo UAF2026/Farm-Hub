@@ -174,6 +174,22 @@ export interface JdOperationProduct {
   tankMix?: boolean;
 }
 
+export interface JdOperationMeasurements {
+  // Filled by /api/jd/sync-measurements. Optional throughout because not every
+  // op has every field (a swathing harvest has no yield, an old op might
+  // pre-date measurement recording, etc.).
+  area?: number;            // ha covered by the operation
+  totalApplied?: number;    // total kg or t (sprays/fert: kg, harvest: t)
+  totalUnit?: string;       // 'kg' | 't' | 'l' …
+  ratePerHa?: number;       // average kg/ha or t/ha
+  rateUnit?: string;        // 'kg/ha' | 'l/ha' | 't/ha'
+  targetRatePerHa?: number; // what was set vs what was actually applied
+  averageSpeedKmh?: number;
+  tillageDepthCm?: number;
+  yieldTPerHa?: number;     // harvest only (combine)
+  fetchedAt?: string;       // ISO timestamp of last measurement fetch
+}
+
 export interface JdOperation {
   id: string;
   type: string;          // seeding | harvest | application | tillage
@@ -188,6 +204,7 @@ export interface JdOperation {
   tillageType?: string;
   machineVin?: string;
   machineType?: string;
+  measurements?: JdOperationMeasurements;
 }
 
 export interface JdSyncStatus {
