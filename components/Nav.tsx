@@ -12,7 +12,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'schemes', label: 'Schemes' },
   { id: 'medicine', label: 'Medicine' },
   { id: 'machinery', label: 'Machinery' },
-  { id: 'utilities', label: 'Utilities' },
+  { id: 'utilities', label: 'Contracts' },
   { id: 'compliance', label: 'Compliance' },
   { id: 'farms', label: 'Farms' },
   { id: 'johndeere', label: 'JD Ops' },

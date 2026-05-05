@@ -94,10 +94,19 @@ export interface Utility {
   provider: string;
   accountRef: string;
   startDate: string;
-  renewalDate: string;
+  renewalDate: string;       // when current contract ends / next renewal kicks in
   annualCost: number;
   notes: string;
   status: string;
+  // Extended fields for full contracts register (all optional so older
+  // entries remain valid).
+  category?: string;          // Electricity | Water | Phone | Broadband | Insurance | …
+  monthlyCost?: number;       // calculated from annualCost when not set explicitly
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  noticePeriodDays?: number;  // days notice required to cancel — important for auto-renewing contracts
+  paymentMethod?: string;     // 'Direct Debit' | 'BACS' | 'Card' | 'Invoice'
 }
 
 export interface SprayRecord {
