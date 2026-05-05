@@ -226,6 +226,7 @@ export default function Compliance({ db, persist, addActivity }: Props) {
 
   const [sprayFilter, setSprayFilter] = useState('');
   const [fertFilter, setFertFilter] = useState('');
+  const [seasonScope, setSeasonScope] = useState<'current' | 'all'>('current');
   const [checklistType, setChecklistType] = useState<'beef' | 'arable'>('beef');
 
   // JD import state
@@ -501,8 +502,18 @@ export default function Compliance({ db, persist, addActivity }: Props) {
   const beefActions = beefItems.filter(c => c.status === 'No' || c.status === 'Action required').length;
   const arableActions = arableItems.filter(c => c.status === 'No' || c.status === 'Action required').length;
 
-  const filteredSprays = sprayFilter ? sprays.filter(s => s.field.toLowerCase().includes(sprayFilter.toLowerCase()) || s.product.toLowerCase().includes(sprayFilter.toLowerCase())) : sprays;
-  const filteredFerts = fertFilter ? fertilisers.filter(f => f.field.toLowerCase().includes(fertFilter.toLowerCase()) || f.product.toLowerCase().includes(fertFilter.toLowerCase())) : fertilisers;
+  // UK cropping season runs Aug -> Jul. The current season started on the
+  // most recent 1 August. When seasonScope === 'current', records before that
+  // date are hidden — the audit window is the current season.
+  const now = new Date();
+  const seasonStartYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const seasonStart = `${seasonStartYear}-08-01`;
+  const inCurrentSeason = (date: string) => date >= seasonStart;
+
+  const baseSprays = seasonScope === 'current' ? sprays.filter(s => inCurrentSeason(s.date)) : sprays;
+  const baseFerts = seasonScope === 'current' ? fertilisers.filter(f => inCurrentSeason(f.date)) : fertilisers;
+  const filteredSprays = sprayFilter ? baseSprays.filter(s => s.field.toLowerCase().includes(sprayFilter.toLowerCase()) || s.product.toLowerCase().includes(sprayFilter.toLowerCase())) : baseSprays;
+  const filteredFerts = fertFilter ? baseFerts.filter(f => f.field.toLowerCase().includes(fertFilter.toLowerCase()) || f.product.toLowerCase().includes(fertFilter.toLowerCase())) : baseFerts;
 
   const checklistItems = checklistType === 'beef' ? beefItems : arableItems;
   const sections = Array.from(new Set(checklistItems.map(c => c.section)));
@@ -555,8 +566,8 @@ export default function Compliance({ db, persist, addActivity }: Props) {
             </div>
             <div className="metric-card">
               <div className="metric-label">Spray records</div>
-              <div className="metric-value">{sprays.length}</div>
-              <div className="metric-sub">this season</div>
+              <div className="metric-value">{sprays.filter(s => inCurrentSeason(s.date)).length}</div>
+              <div className="metric-sub">{seasonStartYear}/{seasonStartYear + 1} season</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">Certificates</div>
@@ -641,10 +652,19 @@ export default function Compliance({ db, persist, addActivity }: Props) {
       {/* ============ SPRAYS ============ */}
       {sub === 'sprays' && (
         <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn-add" onClick={() => { resetSpray(); setSprayModal(true); }}>+ Add spray record</button>
             <button className="btn-primary" onClick={() => openJdImport('spray')} style={{ background: 'var(--green)', color: '#fff' }}>🚜 Import from John Deere</button>
             <button className="btn-primary" onClick={exportSprayCSV}>📥 Export CSV</button>
+            <select
+              value={seasonScope}
+              onChange={e => setSeasonScope(e.target.value as 'current' | 'all')}
+              style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
+              title="Cropping season runs Aug–Jul"
+            >
+              <option value="current">Current season ({seasonStartYear}/{seasonStartYear + 1})</option>
+              <option value="all">All records</option>
+            </select>
             <input
               type="text"
               placeholder="Filter by field or product…"
@@ -655,7 +675,12 @@ export default function Compliance({ db, persist, addActivity }: Props) {
           </div>
 
           <div className="card">
-            <div className="card-title">Spray Application Records ({sprays.length})</div>
+            <div className="card-title">
+              Spray Application Records ({baseSprays.length}
+              {seasonScope === 'current' && sprays.length !== baseSprays.length
+                ? ` of ${sprays.length}`
+                : ''})
+            </div>
             {filteredSprays.length === 0
               ? <div className="empty">No spray records yet.</div>
               : filteredSprays.slice().reverse().map(s => (
@@ -682,10 +707,19 @@ export default function Compliance({ db, persist, addActivity }: Props) {
       {/* ============ FERTILISERS ============ */}
       {sub === 'fertilisers' && (
         <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn-add" onClick={() => { resetFert(); setFertModal(true); }}>+ Add fertiliser record</button>
             <button className="btn-primary" onClick={() => openJdImport('fert')} style={{ background: 'var(--green)', color: '#fff' }}>🚜 Import from John Deere</button>
             <button className="btn-primary" onClick={exportFertCSV}>📥 Export CSV</button>
+            <select
+              value={seasonScope}
+              onChange={e => setSeasonScope(e.target.value as 'current' | 'all')}
+              style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
+              title="Cropping season runs Aug–Jul"
+            >
+              <option value="current">Current season ({seasonStartYear}/{seasonStartYear + 1})</option>
+              <option value="all">All records</option>
+            </select>
             <input
               type="text"
               placeholder="Filter by field or product…"
@@ -696,7 +730,12 @@ export default function Compliance({ db, persist, addActivity }: Props) {
           </div>
 
           <div className="card">
-            <div className="card-title">Fertiliser Application Records ({fertilisers.length})</div>
+            <div className="card-title">
+              Fertiliser Application Records ({baseFerts.length}
+              {seasonScope === 'current' && fertilisers.length !== baseFerts.length
+                ? ` of ${fertilisers.length}`
+                : ''})
+            </div>
             {filteredFerts.length === 0
               ? <div className="empty">No fertiliser records yet.</div>
               : filteredFerts.slice().reverse().map(f => (
