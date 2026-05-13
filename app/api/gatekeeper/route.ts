@@ -343,10 +343,11 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No PDF file provided' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    // Dynamic import prevents pdf-parse from running its test-file loader at build time
+    // Import the internal lib directly to avoid pdf-parse's self-test which tries to
+    // open './test/data/05-versions-space.pdf' and crashes in serverless environments.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = (await import('pdf-parse')).default;
-    const parsed = await pdfParse(buffer);
+    const pdfParseLib = require('pdf-parse/lib/pdf-parse.js');
+    const parsed = await pdfParseLib(buffer);
     const text: string = parsed.text;
 
     if (!text || text.trim().length < 50) {
