@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse');
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -345,6 +343,9 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No PDF file provided' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    // Dynamic import prevents pdf-parse from running its test-file loader at build time
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = (await import('pdf-parse')).default;
     const parsed = await pdfParse(buffer);
     const text: string = parsed.text;
 
