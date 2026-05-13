@@ -240,6 +240,38 @@ export interface FarmData {
   dailyBriefing?: DailyBriefing;
   jdOperations?: JdOperation[];
   jdSyncStatus?: JdSyncStatus;
+  sapTests?: SapTest[];
+}
+
+/* ─── Plant Health / Sap Tests (NutriScope) ────────────────────────────── */
+export interface SapTestReadings {
+  brixNew?: number;       // %
+  brixOld?: number;       // %
+  ph?: number;
+  ec?: number;            // mS/cm
+  nitrate?: number;       // ppm
+  ammonium?: number;      // ppm
+  potassium?: number;     // ppm
+  calcium?: number;       // ppm
+  magnesium?: number;     // ppm
+  sodium?: number;        // ppm
+  chloride?: number;      // ppm
+}
+
+export interface SapTest {
+  id: string;
+  date: string;
+  field: string;
+  crop: string;
+  variety?: string;
+  growthStage?: string;
+  leaf: 'new' | 'old' | 'both';
+  readings: SapTestReadings;
+  weather?: string;
+  notes?: string;
+  recommendation?: string;
+  source?: string;
+  contractContext?: string;   // e.g. 'Wildfarmed'
 }
 
 export const emptyDb: FarmData = {
