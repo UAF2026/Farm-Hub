@@ -130,6 +130,7 @@ interface SapForm {
   nitrate: string; ammonium: string; potassium: string; calcium: string;
   magnesium: string; sodium: string; chloride: string;
   weather: string; notes: string; recommendation: string;
+  contractContext: string;
 }
 
 const EMPTY_SAP_FORM: SapForm = {
@@ -153,6 +154,7 @@ const EMPTY_SAP_FORM: SapForm = {
   weather: '',
   notes: '',
   recommendation: '',
+  contractContext: '',
 };
 
 /* ─── Main component ─────────────────────────────────────────────────────── */
@@ -251,6 +253,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
       notes: sapForm.notes || undefined,
       recommendation: sapForm.recommendation || undefined,
       source: 'Nutriscope',
+      contractContext: sapForm.contractContext || undefined,
     };
     const updated = editSapId
       ? sapTests.map(t => (t.id === editSapId ? entry : t))
@@ -289,6 +292,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
       weather: t.weather || '',
       notes: t.notes || '',
       recommendation: t.recommendation || '',
+      contractContext: t.contractContext || '',
     });
     setEditSapId(t.id);
     setShowSapModal(true);
@@ -656,10 +660,15 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
             sapTests.sort((a, b) => b.date.localeCompare(a.date)).map(t => (
               <div key={t.id} className="row-item">
                 <div style={{ flex: 1 }}>
-                  <div className="row-name">
+                  <div className="row-name" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     {t.field}
-                    {t.crop && <span style={{ fontWeight: 400, marginLeft: 6, color: '#666' }}>· {t.crop}</span>}
-                    {t.growthStage && <span style={{ fontWeight: 400, marginLeft: 6, color: '#666' }}>· {t.growthStage}</span>}
+                    {t.crop && <span style={{ fontWeight: 400, color: '#666' }}>· {t.crop}</span>}
+                    {t.growthStage && <span style={{ fontWeight: 400, color: '#666' }}>· {t.growthStage}</span>}
+                    {t.contractContext && (
+                      <span style={{ fontSize: 11, fontWeight: 600, background: '#1a3c2e', color: '#a8d5b5', borderRadius: 4, padding: '1px 7px', letterSpacing: 0.3 }}>
+                        {t.contractContext}
+                      </span>
+                    )}
                   </div>
                   <div className="row-sub">{fmtDate(t.date)}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -947,9 +956,18 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
               ))}
             </div>
 
-            <div className="field-row">
-              <label className="form-label">Weather / conditions at sampling</label>
-              <input type="text" value={sapForm.weather} onChange={e => setSapForm({ ...sapForm, weather: e.target.value })} placeholder="Dry, 14°C…" />
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div className="field-row" style={{ flex: '2 1 200px' }}>
+                <label className="form-label">Weather / conditions at sampling</label>
+                <input type="text" value={sapForm.weather} onChange={e => setSapForm({ ...sapForm, weather: e.target.value })} placeholder="Dry, 14°C…" />
+              </div>
+              <div className="field-row" style={{ flex: '1 1 160px' }}>
+                <label className="form-label">Contract context</label>
+                <input type="text" value={sapForm.contractContext || ''} onChange={e => setSapForm({ ...sapForm, contractContext: e.target.value })} placeholder="e.g. Wildfarmed" list="contract-list" />
+                <datalist id="contract-list">
+                  <option value="Wildfarmed" />
+                </datalist>
+              </div>
             </div>
             <div className="field-row">
               <label className="form-label">Recommendation</label>
