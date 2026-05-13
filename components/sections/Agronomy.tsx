@@ -221,10 +221,11 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
   const [expandedVisit, setExpandedVisit] = useState<string | null>(null);
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importText, setImportText] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [importReportNo, setImportReportNo] = useState('');
   const [importDate, setImportDate] = useState('');
   const [importError, setImportError] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
   const [filterField, setFilterField] = useState('');
 
   /* ─── Derived data ───────────────────────────────────────────────────── */
@@ -300,28 +301,40 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
     addActivity(`Deleted agronomy visit ${id}`);
   }
 
-  function handleImport() {
+  async function handleImport() {
     setImportError('');
-    if (!importText.trim() || !importReportNo || !importDate) {
-      setImportError('Please paste the PDF text and fill in report number and date.');
-      return;
-    }
-    if (visits.find(v => v.id === importReportNo)) {
+    if (!importFile) { setImportError('Please select a Gatekeeper PDF file.'); return; }
+    if (importReportNo && visits.find(v => v.id === importReportNo)) {
       setImportError(`Report ${importReportNo} already exists.`);
       return;
     }
-    const visit = parseGatekeeperText(importText, importReportNo, importDate);
-    if (!visit || visit.jobs.length === 0) {
-      setImportError('Could not parse any jobs from the pasted text. Check the format.');
-      return;
+    setImportLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('pdf', importFile);
+      if (importReportNo) fd.append('reportNo', importReportNo);
+      if (importDate) fd.append('issueDate', importDate);
+
+      const res = await fetch('/api/gatekeeper', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setImportError(json.error || 'Parse failed.');
+        return;
+      }
+      const visit = json.visit;
+      const id = visit.reportNo || importReportNo;
+      persist({ ...db, agronomyVisits: [...visits, { ...visit, id }].sort((a: AgronomyVisit, b: AgronomyVisit) => b.issueDate.localeCompare(a.issueDate)) });
+      addActivity(`Imported Gatekeeper report ${id} — ${visit.jobs.length} jobs, ${visit.jobs.reduce((n: number, j: AgronomyJob) => n + j.fields.length, 0)} fields`);
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportReportNo('');
+      setImportDate('');
+      setExpandedVisit(id);
+    } catch (e) {
+      setImportError('Upload failed: ' + String(e));
+    } finally {
+      setImportLoading(false);
     }
-    persist({ ...db, agronomyVisits: [...visits, visit].sort((a, b) => b.issueDate.localeCompare(a.issueDate)) });
-    addActivity(`Imported Gatekeeper report ${importReportNo} (${visit.jobs.length} jobs, ${visit.jobs.reduce((n, j) => n + j.fields.length, 0)} fields)`);
-    setShowImportModal(false);
-    setImportText('');
-    setImportReportNo('');
-    setImportDate('');
-    setExpandedVisit(importReportNo);
   }
 
   /* ─── Stats ──────────────────────────────────────────────────────────── */
@@ -667,38 +680,44 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
       {/* ══════════════════════════════════════════════════════════════════ */}
       {showImportModal && (
         <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setShowImportModal(false)}>
-          <div className="modal-box" style={{ maxWidth: 640, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-box" style={{ maxWidth: 520 }}>
             <div className="modal-title">Import Gatekeeper report</div>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.6 }}>
-              Open the Gatekeeper PDF, select all text (Ctrl+A), copy and paste below. Or use the report number and date to create a blank visit and enter jobs manually.
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.6 }}>
+              Upload the PDF from Luke's Gatekeeper email. Report number and date are read automatically from the file — you only need to fill them in if they're wrong.
             </p>
+
+            <div className="field-row">
+              <label className="form-label">Gatekeeper PDF *</label>
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={e => setImportFile(e.target.files?.[0] || null)}
+                style={{ fontSize: 13 }}
+              />
+              {importFile && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Selected: {importFile.name}</div>}
+            </div>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <div className="field-row" style={{ flex: '1 1 120px' }}>
-                <label className="form-label">Report number *</label>
-                <input type="text" placeholder="00012" value={importReportNo} onChange={e => setImportReportNo(e.target.value)} />
+                <label className="form-label">Report number (optional)</label>
+                <input type="text" placeholder="auto-detected" value={importReportNo} onChange={e => setImportReportNo(e.target.value)} />
               </div>
               <div className="field-row" style={{ flex: '1 1 140px' }}>
-                <label className="form-label">Issue date *</label>
+                <label className="form-label">Issue date (optional)</label>
                 <input type="date" value={importDate} onChange={e => setImportDate(e.target.value)} />
               </div>
             </div>
-            <div className="field-row">
-              <label className="form-label">Paste PDF text</label>
-              <textarea
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-                placeholder="Paste the full text of the Gatekeeper PDF here…"
-                style={{ minHeight: 180, fontFamily: 'monospace', fontSize: 11 }}
-              />
-            </div>
+
             {importError && (
               <div style={{ fontSize: 12, color: 'var(--red)', background: '#fcecea', borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
                 {importError}
               </div>
             )}
             <div className="modal-btns">
-              <button className="btn-primary" onClick={handleImport}>Import</button>
-              <button className="btn-cancel" onClick={() => { setShowImportModal(false); setImportError(''); }}>Cancel</button>
+              <button className="btn-primary" onClick={handleImport} disabled={importLoading}>
+                {importLoading ? 'Parsing PDF…' : 'Import'}
+              </button>
+              <button className="btn-cancel" onClick={() => { setShowImportModal(false); setImportError(''); setImportFile(null); }}>Cancel</button>
             </div>
           </div>
         </div>
