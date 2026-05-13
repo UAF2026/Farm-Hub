@@ -123,13 +123,22 @@ const EMPTY_FORM: Omit<SoilTestResult, 'id'> = {
   vrKRate: undefined,
 };
 
-const EMPTY_SAP_FORM = {
+interface SapForm {
+  date: string; field: string; crop: string; variety: string; growthStage: string;
+  leaf: 'new' | 'old' | 'both';
+  brixNew: string; brixOld: string; ph: string; ec: string;
+  nitrate: string; ammonium: string; potassium: string; calcium: string;
+  magnesium: string; sodium: string; chloride: string;
+  weather: string; notes: string; recommendation: string;
+}
+
+const EMPTY_SAP_FORM: SapForm = {
   date: new Date().toISOString().slice(0, 10),
   field: '',
   crop: '',
   variety: '',
   growthStage: '',
-  leaf: 'both' as const,
+  leaf: 'both',
   brixNew: '',
   brixOld: '',
   ph: '',
@@ -158,7 +167,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
   const [editSapId, setEditSapId] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [soilForm, setSoilForm] = useState<Omit<SoilTestResult, 'id'>>(EMPTY_FORM);
-  const [sapForm, setSapForm] = useState(EMPTY_SAP_FORM);
+  const [sapForm, setSapForm] = useState<SapForm>(EMPTY_SAP_FORM);
   const [filterSource, setFilterSource] = useState<string>('All');
 
   // Collect all field names from soil tests, sap tests and existing fields
