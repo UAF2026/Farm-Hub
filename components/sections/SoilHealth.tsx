@@ -166,7 +166,11 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
     const fromTests = soilTests.map(t => t.field);
     const fromSap = sapTests.map(t => t.field);
     const fromFields = db.fields.map(f => f.name);
-    return [...new Set([...fromFields, ...fromTests, ...fromSap])].filter(Boolean).sort();
+    const seen: Record<string, boolean> = {};
+    return [...fromFields, ...fromTests, ...fromSap]
+      .filter(Boolean)
+      .filter(f => { if (seen[f]) return false; seen[f] = true; return true; })
+      .sort();
   }, [db.fields, soilTests, sapTests]);
 
   const summaries = useMemo(
@@ -337,12 +341,12 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
         <div className="metric-card">
           <div className="metric-label">Soil tests</div>
           <div className="metric-value">{soilTests.length}</div>
-          <div className="metric-sub">{[...new Set(soilTests.map(t => t.field))].length} fields covered</div>
+          <div className="metric-sub">{soilTests.map(t => t.field).filter((f, i, a) => a.indexOf(f) === i).length} fields covered</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Sap tests</div>
           <div className="metric-value">{sapTests.length}</div>
-          <div className="metric-sub">{[...new Set(sapTests.map(t => t.field))].length} fields</div>
+          <div className="metric-sub">{sapTests.map(t => t.field).filter((f, i, a) => a.indexOf(f) === i).length} fields</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Avg farm pH</div>
