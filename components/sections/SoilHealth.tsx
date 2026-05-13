@@ -265,7 +265,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
       crop: t.crop,
       variety: t.variety || '',
       growthStage: t.growthStage || '',
-      leaf: t.leaf,
+      leaf: t.leaf as 'new' | 'old' | 'both',
       brixNew: t.readings.brixNew !== undefined ? String(t.readings.brixNew) : '',
       brixOld: t.readings.brixOld !== undefined ? String(t.readings.brixOld) : '',
       ph: t.readings.ph !== undefined ? String(t.readings.ph) : '',
