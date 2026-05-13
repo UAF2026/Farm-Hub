@@ -242,6 +242,59 @@ export interface FarmData {
   jdSyncStatus?: JdSyncStatus;
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
+  agronomyVisits?: AgronomyVisit[];
+}
+
+/* ─── Agronomy (Gatekeeper / Luke Cotton recommendations) ──────────────────── */
+
+export interface AgronomyProduct {
+  name: string;             // e.g. "Jessico One"
+  mappNo?: string;          // e.g. "20475"
+  activeIngredients?: string; // e.g. "Fenpicoxamid 5.00%"
+  ratePerHa: number;        // e.g. 1.0
+  unit: string;             // "L" | "g" | "kg" | "ml"
+  totalRequired?: number;
+  lerap?: string;           // e.g. "50 *" or "B"
+  expiryDate?: string;
+}
+
+export interface AgronomyJobField {
+  name: string;
+  areaHa: number;
+  crop: string;
+  variety?: string;
+  growthStage?: string;
+  // Post-application tracking
+  appliedDate?: string;     // ISO date when actually sprayed
+  appliedByJdOpId?: string; // linked JD operation ID
+  status?: 'pending' | 'applied' | 'overdue' | 'skipped';
+}
+
+export interface AgronomyJob {
+  id: string;               // uid
+  jobNumber: number;        // 1, 2, 3…
+  reason: string;           // e.g. "T2 fungicide"
+  comment?: string;         // Luke's instructions
+  totalAreaHa: number;
+  fields: AgronomyJobField[];
+  products: AgronomyProduct[];
+  waterVolume?: number;     // L/ha
+  earliestDate?: string;
+  latestDate?: string;
+  earliestGrowthStage?: string;
+  latestGrowthStage?: string;
+  sprayQuality?: string;
+}
+
+export interface AgronomyVisit {
+  id: string;               // e.g. "00012"
+  reportNo: string;         // e.g. "00012"
+  issueDate: string;        // ISO YYYY-MM-DD
+  advisor: string;          // "Luke Cotton"
+  basisFacts?: string;      // "R/E4927/ICM, FE/2916"
+  notes?: string;           // free text from email body
+  jobs: AgronomyJob[];
+  source: 'gatekeeper' | 'manual';
 }
 
 /* ─── Soil Health (lab tests: Nutriscope, SOYL, independent) ───────────── */
