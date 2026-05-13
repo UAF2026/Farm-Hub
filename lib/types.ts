@@ -241,6 +241,41 @@ export interface FarmData {
   jdOperations?: JdOperation[];
   jdSyncStatus?: JdSyncStatus;
   sapTests?: SapTest[];
+  soilTests?: SoilTestResult[];
+}
+
+/* ─── Soil Health (lab tests: Nutriscope, SOYL, independent) ───────────── */
+export interface SoilTestResult {
+  id: string;
+  date: string;
+  field: string;
+  source: 'Nutriscope' | 'SOYL' | 'Independent' | 'Other';
+  lab?: string;
+  depth?: string;
+  ph?: number;
+  phosphorus?: number;
+  phosphorusIndex?: string;
+  potassium?: number;
+  potassiumIndex?: string;
+  magnesium?: number;
+  magnesiumIndex?: string;
+  organicMatter?: number;
+  organicCarbon?: number;
+  nitrogen?: number;
+  sulphur?: number;
+  boron?: number;
+  manganese?: number;
+  zinc?: number;
+  copper?: number;
+  soilType?: string;
+  texture?: string;
+  bulkDensity?: number;
+  notes?: string;
+  recommendation?: string;
+  soylZone?: string;
+  vrNRate?: number;
+  vrPRate?: number;
+  vrKRate?: number;
 }
 
 /* ─── Plant Health / Sap Tests (NutriScope) ────────────────────────────── */

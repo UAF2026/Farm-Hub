@@ -8,6 +8,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'livestock', label: 'Livestock' },
   { id: 'map', label: 'Map' },
   { id: 'crops', label: 'Crops' },
+  { id: 'soilhealth', label: 'Soil' },
   { id: 'finance', label: 'Finance' },
   { id: 'schemes', label: 'Schemes' },
   { id: 'medicine', label: 'Medicine' },
