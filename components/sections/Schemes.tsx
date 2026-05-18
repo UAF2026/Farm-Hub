@@ -242,7 +242,7 @@ export default function Schemes({ db, persist, addActivity }: Props) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div className="row-name">{s.name}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{s.annual > 0 ? fmtMoney(s.annual) + '/yr' : s.annualNote || '—'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{s.annual > 0 ? fmtMoney(s.annual) + '/yr' : '—'}</div>
                   </div>
                   <div className="row-sub">Ref: {s.ref} · Ends {fmtDate(s.ends)} · {monthsUntil(s.ends)} months remaining</div>
                 </div>
