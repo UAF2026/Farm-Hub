@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FarmData, emptyDb, CloudConfig, DailyBriefing, Task, Finance as FinanceType } from '@/lib/types';
+import { FarmData, emptyDb, CloudConfig, DailyBriefing, Task, Finance as FinanceType, GrainMarketPrice } from '@/lib/types';
 import { fetchFarmData, saveFarmData } from '@/lib/supabase';
 import { uid } from '@/lib/utils';
 import Header from './Header';
@@ -24,6 +24,7 @@ import Settings from './sections/Settings';
 import JohnDeere from './sections/JohnDeere';
 import SoilHealth from './sections/SoilHealth';
 import Agronomy from './sections/Agronomy';
+import GrainTrading from './sections/GrainTrading';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
@@ -99,16 +100,33 @@ function processBriefing(db: FarmData): FarmData {
       };
     });
 
+  // Apply grain prices from price report emails (Openfield, ADM, etc.)
+  let updatedGrainTrading = db.grainTrading;
+  if (briefing.grainPrices && briefing.grainPrices.length > 0) {
+    const newMarketPrices: GrainMarketPrice[] = briefing.grainPrices.map(gp => ({
+      contract: gp.contract,
+      pricePerTonne: gp.pricePerTonne,
+      fetchedAt: briefing.generatedAt,
+      source: gp.source,
+    }));
+    updatedGrainTrading = {
+      ...(db.grainTrading ?? { positions: [] }),
+      marketPrices: newMarketPrices,
+      lastMarketFetch: briefing.generatedAt,
+    };
+  }
+
   return {
     ...db,
     tasks: [...db.tasks, ...newTasks],
     finance: [...db.finance, ...newFinance],
+    grainTrading: updatedGrainTrading,
     dailyBriefing: { ...briefing, processed: true },
   };
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -271,6 +289,7 @@ export default function FarmHub() {
         {section === 'agronomy' && <Agronomy db={db} persist={persist} addActivity={addActivity} />}
         {section === 'finance' && <Finance db={db} persist={persist} addActivity={addActivity} />}
         {section === 'schemes' && <Schemes db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'graintrading' && <GrainTrading db={db} persist={persist} addActivity={addActivity} />}
         {section === 'farms' && <Farms />}
         {section === 'links' && <Links />}
         {section === 'assistant' && <Assistant db={db} />}

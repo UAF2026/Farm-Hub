@@ -223,6 +223,51 @@ export interface JdSyncStatus {
   since: string;         // ISO date — operations from this date onwards
 }
 
+/* ─── Grain Trading ─────────────────────────────────────────────────────── */
+
+export type GrainCropYear = '2024/25' | '2025/26' | '2026/27' | '2027/28';
+export type GrainContractStatus = 'open' | 'delivered' | 'invoiced' | 'paid' | 'cancelled';
+export type GrainContractType = 'spot' | 'forward' | 'pool' | 'tender';
+
+export interface GrainContract {
+  id: string;
+  cropYear: GrainCropYear;
+  crop: string;               // 'Winter Wheat' | 'Feed Wheat' | 'Milling Wheat'
+  variety?: string;
+  buyer: string;              // e.g. 'Heygates', 'Openfield', 'Cofco'
+  contractType: GrainContractType;
+  tonnes: number;
+  pricePerTonne: number;      // £/t
+  basis?: string;             // e.g. 'ex-farm', 'delivered'
+  contractRef?: string;
+  contractDate?: string;      // ISO date signed
+  deliveryFrom?: string;      // ISO date
+  deliveryTo?: string;        // ISO date
+  deliveredTonnes?: number;   // filled in as deliveries happen
+  status: GrainContractStatus;
+  notes?: string;
+}
+
+export interface GrainPosition {
+  cropYear: GrainCropYear;
+  crop: string;
+  estimatedTotalTonnes: number;   // expected harvest or in-store
+  contracts: GrainContract[];
+}
+
+export interface GrainTradingData {
+  positions: GrainPosition[];
+  lastMarketFetch?: string;       // ISO timestamp of last price update
+  marketPrices?: GrainMarketPrice[];
+}
+
+export interface GrainMarketPrice {
+  contract: string;    // e.g. 'Nov-26', 'May-27'
+  pricePerTonne: number;
+  fetchedAt: string;   // ISO timestamp
+  source?: string;
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -243,6 +288,7 @@ export interface FarmData {
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];
+  grainTrading?: GrainTradingData;
 }
 
 /* ─── Agronomy (Gatekeeper / Luke Cotton recommendations) ──────────────────── */
@@ -414,6 +460,12 @@ export interface BriefingInfo {
   detail: string;
 }
 
+export interface BriefingGrainPrice {
+  contract: string;       // e.g. 'Nov-26', 'May-26 (old crop)', 'Jul-26 (harvest)'
+  pricePerTonne: number;  // £/t
+  source?: string;        // e.g. 'Openfield', 'ADM', 'ICE'
+}
+
 export interface DailyBriefing {
   date: string;           // YYYY-MM-DD
   generatedAt: string;    // ISO timestamp
@@ -422,5 +474,6 @@ export interface DailyBriefing {
   invoices: BriefingInvoice[];
   information: BriefingInfo[];
   calendarEvents: string[];
+  grainPrices?: BriefingGrainPrice[];  // extracted from Openfield/ADM price reports
   processed?: boolean;    // true once action items & invoices have been added to tasks/finance
 }
