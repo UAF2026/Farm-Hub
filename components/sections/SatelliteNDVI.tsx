@@ -125,12 +125,14 @@ export default function SatelliteNDVI({ db }: Props) {
     setSyncResult(null);
     try {
       const res = await fetch('/api/satellite/sync', { method: 'POST' });
-      const json = await res.json() as { snapshotsStored?: number; fieldsProcessed?: number; errors?: number; error?: string };
-      if (json.error) throw new Error(json.error);
-      setSyncResult(`Synced: ${json.snapshotsStored} snapshots across ${json.fieldsProcessed} fields. Errors: ${json.errors}`);
+      const text = await res.text();
+      let json: { snapshotsStored?: number; fieldsProcessed?: number; errors?: number; error?: string; results?: unknown[] };
+      try { json = JSON.parse(text); } catch { throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`); }
+      if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+      setSyncResult(`✅ Synced: ${json.snapshotsStored} snapshots across ${json.fieldsProcessed} fields. Errors: ${json.errors}`);
       await loadData();
     } catch (e) {
-      setSyncResult(`Error: ${e instanceof Error ? e.message : String(e)}`);
+      setSyncResult(`❌ ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSyncing(false);
     }

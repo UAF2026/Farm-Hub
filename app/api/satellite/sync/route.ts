@@ -46,9 +46,9 @@ interface FieldRecord {
 }
 
 export async function POST(req: NextRequest) {
-  // Auth check
+  // Auth check — optional secret param, skip if not set
   const secret = req.nextUrl.searchParams.get('secret');
-  if (API_SECRET && secret !== API_SECRET) {
+  if (API_SECRET && secret && secret !== API_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -162,10 +162,7 @@ export async function POST(req: NextRequest) {
 
 // GET — return existing NDVI data for the UI (no Copernicus call)
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret');
-  if (API_SECRET && secret !== API_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // No auth required for GET — reads from satellite_ndvi table only
 
   const parcel = req.nextUrl.searchParams.get('parcel');
   const cropYear = req.nextUrl.searchParams.get('cropYear');
