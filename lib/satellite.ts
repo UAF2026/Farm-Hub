@@ -374,11 +374,8 @@ export async function fetchNdviForField(
   const body = {
     input: {
       bounds: {
-        geometry: {
-          type: geojson.geometry.type,
-          coordinates: geojson.geometry.coordinates,
-          crs: 'http://www.opengis.net/def/crs/EPSG/0/4326',
-        },
+        bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
+        properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' },
       },
       data: [
         {
