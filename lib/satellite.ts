@@ -249,20 +249,12 @@ export async function getOrFetchBoundary(
 
   const [, sheetId, parcelId] = match;
 
-  // Try RPA polygon lookup first
-  let geojson = await fetchParcelBoundary(sheetId, parcelId);
-  let bbox = geojson ? calcBbox(geojson) : null;
-  let source = 'rpa-arcgis';
-
-  // Fallback: approximate bbox from OS grid reference
-  if (!bbox) {
-    console.warn(`[satellite] RPA lookup failed for ${rpaParcel} — using OS grid approximation`);
-    bbox = osGridToBbox(sheetId, areaHa);
-    if (bbox) {
-      geojson = bboxToGeoJSON(bbox);
-      source = 'os-grid-approx';
-    }
-  }
+  // Use OS grid approximation directly — fast and reliable.
+  // RPA polygon lookup is too slow for batch processing (timeouts).
+  // Exact boundaries can be loaded later via a separate boundary-import tool.
+  const bbox = osGridToBbox(sheetId, areaHa);
+  const geojson = bbox ? bboxToGeoJSON(bbox) : null;
+  const source = 'os-grid-approx';
 
   if (!bbox || !geojson) return null;
 

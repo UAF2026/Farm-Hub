@@ -119,22 +119,35 @@ export default function SatelliteNDVI({ db }: Props) {
     }
   }
 
-  // Trigger satellite sync
+  // Trigger satellite sync — runs batches sequentially to avoid timeout
   async function triggerSync() {
     setSyncing(true);
     setSyncResult(null);
+    let totalStored = 0;
+    let totalErrors = 0;
+    let firstErrorMsg = '';
     try {
-      const res = await fetch('/api/satellite/sync', { method: 'POST' });
-      const text = await res.text();
-      let json: { snapshotsStored?: number; fieldsProcessed?: number; errors?: number; error?: string; results?: unknown[] };
-      try { json = JSON.parse(text); } catch { throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`); }
-      if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
-      // Show first error if all fields failed
-      type SyncResult = { field: string; parcel: string; snapshots: number; error?: string };
-      const results = (json.results ?? []) as SyncResult[];
-      const firstError = results.find(r => r.error);
-      const errorDetail = firstError ? ` — First error: ${firstError.field}: ${firstError.error}` : '';
-      setSyncResult(`✅ Synced: ${json.snapshotsStored} snapshots across ${json.fieldsProcessed} fields. Errors: ${json.errors}${errorDetail}`);
+      let batch = 0;
+      let hasMore = true;
+      while (hasMore) {
+        setSyncResult(`⏳ Syncing batch ${batch + 1}…`);
+        const res = await fetch(`/api/satellite/sync?batch=${batch}`, { method: 'POST' });
+        const text = await res.text();
+        type BatchJson = { snapshotsStored?: number; errors?: number; hasMore?: boolean; totalBatches?: number; error?: string; results?: Array<{ field: string; error?: string }> };
+        let json: BatchJson;
+        try { json = JSON.parse(text); } catch { throw new Error(`Non-JSON (${res.status}): ${text.slice(0, 200)}`); }
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+        totalStored += json.snapshotsStored ?? 0;
+        totalErrors += json.errors ?? 0;
+        if (!firstErrorMsg) {
+          const firstErr = json.results?.find(r => r.error);
+          if (firstErr) firstErrorMsg = `${firstErr.field}: ${firstErr.error}`;
+        }
+        hasMore = json.hasMore ?? false;
+        batch++;
+      }
+      const detail = firstErrorMsg ? ` — Sample error: ${firstErrorMsg}` : '';
+      setSyncResult(`✅ Sync complete: ${totalStored} snapshots stored. Errors: ${totalErrors}${detail}`);
       await loadData();
     } catch (e) {
       setSyncResult(`❌ ${e instanceof Error ? e.message : String(e)}`);
