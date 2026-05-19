@@ -384,7 +384,7 @@ export async function fetchNdviForField(
       },
       data: [
         {
-          datasetId: 'S2L2A',
+          type: 'S2L2A',
           dataFilter: {
             timeRange: { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` },
             maxCloudCoverage: maxCloudCoverPct,
