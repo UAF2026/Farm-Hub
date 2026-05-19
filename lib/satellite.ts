@@ -380,16 +380,14 @@ export async function fetchNdviForField(
     input: {
       bounds: {
         bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
-        geometry: geojson.geometry,
         properties: { crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' },
       },
       data: [
         {
-          type: 'sentinel-2-l2a',
+          datasetId: 'S2L2A',
           dataFilter: {
             timeRange: { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` },
             maxCloudCoverage: maxCloudCoverPct,
-            mosaickingOrder: 'mostRecent',
           },
         },
       ],
