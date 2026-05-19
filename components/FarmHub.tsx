@@ -25,6 +25,7 @@ import JohnDeere from './sections/JohnDeere';
 import SoilHealth from './sections/SoilHealth';
 import Agronomy from './sections/Agronomy';
 import GrainTrading from './sections/GrainTrading';
+import SatelliteNDVI from './sections/SatelliteNDVI';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
@@ -126,7 +127,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -290,6 +291,7 @@ export default function FarmHub() {
         {section === 'finance' && <Finance db={db} persist={persist} addActivity={addActivity} />}
         {section === 'schemes' && <Schemes db={db} persist={persist} addActivity={addActivity} />}
         {section === 'graintrading' && <GrainTrading db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'satellite' && <SatelliteNDVI db={db} />}
         {section === 'farms' && <Farms />}
         {section === 'links' && <Links />}
         {section === 'assistant' && <Assistant db={db} />}

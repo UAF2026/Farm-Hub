@@ -13,6 +13,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'finance', label: 'Finance' },
   { id: 'schemes', label: 'Schemes' },
   { id: 'graintrading', label: 'Grain' },
+  { id: 'satellite', label: 'Satellite' },
   { id: 'medicine', label: 'Medicine' },
   { id: 'machinery', label: 'Machinery' },
   { id: 'utilities', label: 'Contracts' },
