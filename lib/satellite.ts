@@ -283,7 +283,7 @@ export async function getOrFetchBoundary(
 // Env vars needed: COPERNICUS_CLIENT_ID, COPERNICUS_CLIENT_SECRET
 
 const CDSE_TOKEN_URL = 'https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token';
-const CDSE_STATS_URL = 'https://sh.dataspace.copernicus.eu/api/v1/statistics';
+const CDSE_STATS_URL = 'https://sh.dataspace.copernicus.eu/statistics/v1';
 
 let _tokenCache: { token: string; expiresAt: number } | null = null;
 
@@ -327,10 +327,7 @@ const NDVI_EVALSCRIPT = `
 //VERSION=3
 function setup() {
   return {
-    input: [
-      { bands: ["B04", "B08", "dataMask"], units: "REFLECTANCE" },
-      { bands: ["CLM"], units: "DN" }
-    ],
+    input: [{ bands: ["B04", "B08", "dataMask"] }],
     output: [
       { id: "ndvi", bands: 1, sampleType: "FLOAT32" },
       { id: "dataMask", bands: 1, sampleType: "UINT8" }
@@ -339,9 +336,7 @@ function setup() {
 }
 function evaluatePixel(sample) {
   const ndvi = (sample.B08 - sample.B04) / (sample.B08 + sample.B04);
-  // Mask clouds (CLM=1 means cloud) and invalid pixels
-  const valid = sample.dataMask === 1 && sample.CLM === 0 ? 1 : 0;
-  return { ndvi: [ndvi], dataMask: [valid] };
+  return { ndvi: [ndvi], dataMask: [sample.dataMask] };
 }
 `;
 
@@ -379,12 +374,15 @@ export async function fetchNdviForField(
   const body = {
     input: {
       bounds: {
-        bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
-        properties: { crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' },
+        geometry: {
+          type: geojson.geometry.type,
+          coordinates: geojson.geometry.coordinates,
+          crs: 'http://www.opengis.net/def/crs/EPSG/0/4326',
+        },
       },
       data: [
         {
-          type: 'S2L2A',
+          type: 'sentinel-2-l2a',
           dataFilter: {
             timeRange: { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` },
             maxCloudCoverage: maxCloudCoverPct,
