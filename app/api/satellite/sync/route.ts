@@ -97,8 +97,9 @@ export async function POST(req: NextRequest) {
     const rpaParcel = field.rpaParcel || `${field.sheetId} ${field.parcel}`;
 
     try {
-      // Get or fetch boundary polygon
-      const boundary = await getOrFetchBoundary(rpaParcel, field.name);
+      // Get or fetch boundary polygon (pass area so fallback bbox is correctly sized)
+      const areaHa = (field as unknown as { area?: number }).area ?? 10;
+      const boundary = await getOrFetchBoundary(rpaParcel, field.name, areaHa);
       if (!boundary?.bbox || !boundary?.geojson) {
         results.push({ field: field.name, parcel: rpaParcel, snapshots: 0, error: 'No boundary found in RPA data' });
         totalErrors++;

@@ -63,33 +63,64 @@ export interface NdviSnapshot {
   notes?: string;
 }
 
-// ── RPA INSPIRE parcel boundary lookup ──────────────────────────────────────
-// UK INSPIRE parcels are published at data.defra.gov.uk WFS.
-// Sheet ID format: SU7291 → sheet "SU7291", parcel "6235"
-// The INSPIRE ID format is: {sheetId}{parcelId} e.g. SU72916235
-const RPA_WFS_URL = 'https://environment.data.gov.uk/arcgis/rest/services/RPA/LandParcel/MapServer/0/query';
+// ── RPA land parcel boundary lookup ─────────────────────────────────────────
+// RPA publishes parcel polygons via ArcGIS REST. We try multiple known
+// endpoints and field name combinations — the service has moved over the years.
+//
+// Parcel ref format: "SU7291 6235" → sheetId="SU7291", parcelId="6235"
+// Combined ref (no space): "SU72916235"
+
+const RPA_ENDPOINTS = [
+  'https://gisrest.defra.gov.uk/server/rest/services/RPA/LandParcels/MapServer/0/query',
+  'https://environment.data.gov.uk/arcgis/rest/services/RPA/LandParcels/MapServer/0/query',
+  'https://environment.data.gov.uk/arcgis/rest/services/RPA/LandParcel/MapServer/0/query',
+];
+
+// Different field name combinations used across versions of the service
+const FIELD_NAME_COMBOS = [
+  (sheet: string, parcel: string) => `SHEET_ID='${sheet}' AND PARCEL_ID='${parcel}'`,
+  (sheet: string, parcel: string) => `SHEETID='${sheet}' AND PARCELID='${parcel}'`,
+  (sheet: string, parcel: string) => `SHEET_PARCEL_REF='${sheet}${parcel}'`,
+  (sheet: string, parcel: string) => `PARCEL_REF='${sheet}${parcel}'`,
+  (_sheet: string, _parcel: string, combined: string) => `PARCEL_REFERENCE='${combined}'`,
+];
 
 export async function fetchParcelBoundary(sheetId: string, parcelId: string): Promise<GeoJSONFeature | null> {
-  // e.g. sheetId = 'SU7291', parcelId = '6235'
-  // RPA ArcGIS REST query
-  const params = new URLSearchParams({
-    where: `SHEET_ID='${sheetId}' AND PARCEL_ID='${parcelId}'`,
-    outFields: 'SHEET_ID,PARCEL_ID,AREA_HA',
-    outSR: '4326',  // WGS84
-    f: 'geojson',
-  });
+  const combined = `${sheetId}${parcelId}`;
 
-  const res = await fetch(`${RPA_WFS_URL}?${params}`, {
-    headers: { 'User-Agent': 'FarmHub/1.0 (Upper Assendon Farm)' },
-    signal: AbortSignal.timeout(15000),
-  });
+  for (const baseUrl of RPA_ENDPOINTS) {
+    for (const whereFn of FIELD_NAME_COMBOS) {
+      const where = whereFn(sheetId, parcelId, combined);
+      const params = new URLSearchParams({
+        where,
+        outFields: '*',
+        outSR: '4326',  // WGS84 lon/lat
+        f: 'geojson',
+      });
 
-  if (!res.ok) return null;
+      try {
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { 'User-Agent': 'FarmHub/1.0 (Upper Assendon Farm)' },
+          signal: AbortSignal.timeout(12000),
+        });
 
-  const data = await res.json() as { features?: GeoJSONFeature[] };
-  if (!data.features || data.features.length === 0) return null;
+        if (!res.ok) continue;
 
-  return data.features[0];
+        const data = await res.json() as { features?: GeoJSONFeature[]; error?: { message?: string } };
+        if (data.error) continue;
+        if (data.features && data.features.length > 0) {
+          console.log(`[satellite] Found boundary via ${baseUrl} with where: ${where}`);
+          return data.features[0];
+        }
+      } catch {
+        // timeout or network error — try next
+        continue;
+      }
+    }
+  }
+
+  console.warn(`[satellite] No boundary found for ${sheetId} ${parcelId} — tried all endpoints`);
+  return null;
 }
 
 // Calculate bounding box from a GeoJSON polygon
@@ -116,10 +147,85 @@ export function calcBbox(feature: GeoJSONFeature): BBox {
   };
 }
 
+// ── Approximate bbox from OS grid reference ──────────────────────────────────
+// Converts an OS National Grid sheet ID (e.g. "SU7291") to an approximate
+// WGS84 bounding box. This is used as a fallback when the RPA polygon lookup
+// fails — it gives Sentinel-2 a ~1km² area to work with, which is good enough
+// to get a representative NDVI value for the field.
+//
+// OS grid: each 100km square has a 2-letter prefix. Within that, 4 digits give
+// 1km easting+northing offsets (e.g. SU7291 → easting 72, northing 91 within SU).
+// SU origin: easting 400000, northing 100000 (OSGB36).
+// We convert to approximate WGS84 using a simple offset (accurate to ~100m for Oxon).
+
+const OS_ORIGINS: Record<string, [number, number]> = {
+  SU: [400000, 100000],
+  SY: [300000, 100000],
+  ST: [300000, 200000],
+  SZ: [400000,   0],
+  TQ: [500000, 100000],
+  TR: [600000, 100000],
+  SP: [400000, 200000],
+  TL: [500000, 200000],
+  SK: [400000, 300000],
+  SE: [400000, 400000],
+  NY: [300000, 500000],
+  NT: [300000, 600000],
+};
+
+function osGridToBbox(sheetId: string, areaHa = 10): BBox | null {
+  // sheetId e.g. "SU7291" → prefix "SU", easting digits "72", northing digits "91"
+  const m = sheetId.match(/^([A-Z]{2})(\d{2})(\d{2})$/);
+  if (!m) return null;
+  const [, prefix, eStr, nStr] = m;
+  const origin = OS_ORIGINS[prefix];
+  if (!origin) return null;
+
+  const easting  = origin[0] + parseInt(eStr) * 1000;
+  const northing = origin[1] + parseInt(nStr) * 1000;
+
+  // Approximate OSGB36 → WGS84 for central England (accurate to ~200m)
+  // Latitude: northing / 111320 + 49.0 offset
+  // Longitude: (easting - 400000) / (111320 * cos(lat)) - 2.0 offset
+  const latCenter = northing / 111320 + 49.0 - (northing > 300000 ? (northing - 300000) / 1e7 : 0);
+  const lonCenter = (easting - 400000) / (111320 * Math.cos(latCenter * Math.PI / 180)) - 2.0;
+
+  // Expand by ~sqrt(areaHa) * 50m in each direction
+  const deltaLat = (Math.sqrt(areaHa) * 60) / 111320;
+  const deltaLon = deltaLat / Math.cos(latCenter * Math.PI / 180);
+
+  return {
+    west:  lonCenter - deltaLon,
+    south: latCenter - deltaLat,
+    east:  lonCenter + deltaLon,
+    north: latCenter + deltaLat,
+  };
+}
+
+// Build a simple rectangular GeoJSON polygon from a bbox
+function bboxToGeoJSON(bbox: BBox): GeoJSONFeature {
+  const { west, south, east, north } = bbox;
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south],
+      ]],
+    },
+    properties: { source: 'os-grid-approx' },
+  };
+}
+
 // ── Get or cache boundary ────────────────────────────────────────────────────
 export async function getOrFetchBoundary(
   rpaParcel: string,
   fieldName: string,
+  areaHa = 10,
 ): Promise<FieldBoundary | null> {
   const supabase = getServerSupabase();
 
@@ -130,7 +236,7 @@ export async function getOrFetchBoundary(
     .eq('rpa_parcel', rpaParcel)
     .single();
 
-  if (cached?.geojson) {
+  if (cached?.bbox) {
     return cached as FieldBoundary;
   }
 
@@ -142,23 +248,37 @@ export async function getOrFetchBoundary(
   }
 
   const [, sheetId, parcelId] = match;
-  const geojson = await fetchParcelBoundary(sheetId, parcelId);
-  const bbox = geojson ? calcBbox(geojson) : null;
 
-  // Upsert into cache
+  // Try RPA polygon lookup first
+  let geojson = await fetchParcelBoundary(sheetId, parcelId);
+  let bbox = geojson ? calcBbox(geojson) : null;
+  let source = 'rpa-arcgis';
+
+  // Fallback: approximate bbox from OS grid reference
+  if (!bbox) {
+    console.warn(`[satellite] RPA lookup failed for ${rpaParcel} — using OS grid approximation`);
+    bbox = osGridToBbox(sheetId, areaHa);
+    if (bbox) {
+      geojson = bboxToGeoJSON(bbox);
+      source = 'os-grid-approx';
+    }
+  }
+
+  if (!bbox || !geojson) return null;
+
+  // Cache result
   await supabase.from('field_boundaries').upsert({
     rpa_parcel: rpaParcel,
     field_name: fieldName,
     sheet_id: sheetId,
     parcel_id: parcelId,
-    geojson: geojson ?? null,
-    bbox: bbox ?? null,
+    geojson,
+    bbox,
     fetched_at: new Date().toISOString(),
+    notes: source,
   });
 
-  if (!geojson || !bbox) return null;
-
-  return { rpa_parcel: rpaParcel, field_name: fieldName, sheet_id: sheetId, parcel_id: parcelId, area_ha: 0, geojson, bbox };
+  return { rpa_parcel: rpaParcel, field_name: fieldName, sheet_id: sheetId, parcel_id: parcelId, area_ha: areaHa, geojson, bbox };
 }
 
 // ── Copernicus openEO — NDVI Statistical API ─────────────────────────────────
