@@ -1,8 +1,184 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { FarmData, SapTest, SapTestReadings, SoilTestResult } from '@/lib/types';
 import { uid } from '@/lib/utils';
+
+/* ─── Nutriscope (Senseen) Excel import ─────────────────────────────────── */
+
+// French mineral name → SapTestReadings key
+const MINERAL_MAP: Record<string, keyof SapTestReadings> = {
+  'azote total':    'nitrogen',
+  'azote':          'nitrogen',
+  'phosphore':      'phosphorus',
+  'potassium':      'potassium',
+  'calcium':        'calcium',
+  'soufre':         'sulphur',
+  'magnésium':      'magnesium',
+  'magnesium':      'magnesium',
+  'ammonium':       'ammonium',
+  'cuivre':         'copper',
+  'molybdène':      'molybdenum',
+  'molybdene':      'molybdenum',
+  'fer':            'iron',
+  'silice':         'silica',
+  'zinc':           'zinc',
+  'bore':           'boron',
+  'manganèse':      'manganese',
+  'manganese':      'manganese',
+  'sodium':         'sodium',
+  'chlorure':       'chloride',
+  'ph':             'ph',
+  'conductivité':   'ec',
+  'conductivite':   'ec',
+  'nitrate':        'nitrate',
+};
+
+interface NutriscopeScan {
+  scanId: string;
+  date: string;           // YYYY-MM-DD
+  fieldName: string;
+  readings: SapTestReadings;
+  statuses: Record<string, string>;  // mineral → Déficient/Normal/Excès
+}
+
+/** Parse a Nutriscope/Senseen .xlsx file using SheetJS (loaded from CDN).
+ *  Returns an array of scan groups — one SapTest candidate per unique scan. */
+async function parseNutriscopeXlsx(file: File): Promise<NutriscopeScan[]> {
+  // Dynamically load SheetJS from CDN if not already present
+  if (!(window as any).XLSX) {
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => resolve();
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const XLSX = (window as any).XLSX;
+
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+
+  // ── Extract field name from "Page de garde" sheet ──
+  let fieldName = '';
+  const coverSheet = wb.SheetNames.find((n: string) =>
+    n.toLowerCase().includes('page de garde') || n.toLowerCase().includes('cover')
+  );
+  if (coverSheet) {
+    const rows: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[coverSheet], { header: 1, defval: '' });
+    for (const row of rows) {
+      for (const cell of row) {
+        const val = String(cell);
+        if (val.toLowerCase().startsWith('produit:')) {
+          fieldName = val.replace(/^produit:\s*/i, '').trim();
+          break;
+        }
+        // Also handle separate cells: label "Produit" in one cell, value in next
+      }
+      if (!fieldName) {
+        // look for a row where one cell is "Produit" and the next has the name
+        const idx = row.findIndex((c: any) => String(c).toLowerCase().trim() === 'produit');
+        if (idx >= 0 && row[idx + 1]) {
+          fieldName = String(row[idx + 1]).trim();
+          break;
+        }
+      }
+      if (fieldName) break;
+    }
+  }
+
+  // ── Parse "Tous les Minéraux Combinés" sheet ──
+  const combinedSheet = wb.SheetNames.find((n: string) =>
+    n.toLowerCase().includes('combinés') ||
+    n.toLowerCase().includes('combines') ||
+    n.toLowerCase().includes('min') // fallback
+  );
+  if (!combinedSheet) throw new Error('Could not find the combined minerals sheet in this file.');
+
+  const rows: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[combinedSheet], { header: 1, defval: '' });
+  if (rows.length < 2) throw new Error('Combined minerals sheet appears empty.');
+
+  // Find header row (first row with "Date" or "Nom du Minéral")
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const rowStr = rows[i].join('|').toLowerCase();
+    if (rowStr.includes('date') || rowStr.includes('nom du') || rowStr.includes('minéral')) {
+      headerIdx = i;
+      break;
+    }
+  }
+  const headers = rows[headerIdx].map((h: any) => String(h).trim());
+
+  // Column indices
+  const col = (name: string) => {
+    const n = name.toLowerCase();
+    return headers.findIndex((h: string) => h.toLowerCase().includes(n));
+  };
+  const iDate     = col('date');
+  const iScanId   = headers.findIndex((h: string) => h.toLowerCase().includes('visuel') || h.toLowerCase().includes('id'));
+  const iMineral  = col('minéral') >= 0 ? col('minéral') : col('mineral');
+  const iValeur   = col('valeur') >= 0 ? col('valeur') : col('value');
+  const iStatut   = col('statut') >= 0 ? col('statut') : col('status');
+  const iLocation = headers.findIndex((h: string) => h.toLowerCase().includes('emplace'));
+
+  // Group data rows by scan ID
+  const scanMap = new Map<string, NutriscopeScan>();
+
+  for (let r = headerIdx + 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || row.every((c: any) => c === '')) continue;
+
+    const rawDate  = iDate >= 0 ? row[iDate] : '';
+    const scanId   = iScanId >= 0 ? String(row[iScanId]).trim() : `row-${r}`;
+    const mineral  = iMineral >= 0 ? String(row[iMineral]).trim() : '';
+    const valRaw   = iValeur >= 0 ? row[iValeur] : undefined;
+    const statut   = iStatut >= 0 ? String(row[iStatut]).trim() : '';
+
+    if (!mineral || valRaw === '' || valRaw === undefined || valRaw === null) continue;
+
+    // Parse date
+    let dateStr = '';
+    if (rawDate instanceof Date) {
+      dateStr = rawDate.toISOString().slice(0, 10);
+    } else if (typeof rawDate === 'string' && rawDate) {
+      // Try DD/MM/YYYY or YYYY-MM-DD
+      const parts = rawDate.split('/');
+      if (parts.length === 3) {
+        dateStr = `${parts[2].slice(0, 4)}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      } else {
+        dateStr = rawDate.slice(0, 10);
+      }
+    } else if (typeof rawDate === 'number') {
+      // Excel serial date
+      const d = XLSX.SSF.parse_date_code(rawDate);
+      if (d) dateStr = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    }
+
+    // Map mineral name to key
+    const mineralKey = MINERAL_MAP[mineral.toLowerCase()];
+    if (!mineralKey) continue; // unknown mineral — skip
+
+    const value = typeof valRaw === 'number' ? valRaw : parseFloat(String(valRaw).replace(',', '.'));
+    if (isNaN(value)) continue;
+
+    if (!scanMap.has(scanId)) {
+      scanMap.set(scanId, {
+        scanId,
+        date: dateStr,
+        fieldName: fieldName || file.name.replace(/\.xlsx$/i, ''),
+        readings: {},
+        statuses: {},
+      });
+    }
+    const scan = scanMap.get(scanId)!;
+    if (!scan.date && dateStr) scan.date = dateStr;
+    (scan.readings as any)[mineralKey] = value;
+    if (statut) scan.statuses[mineral] = statut;
+  }
+
+  return Array.from(scanMap.values());
+}
 
 interface Props {
   db: FarmData;
@@ -172,6 +348,15 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
   const [sapForm, setSapForm] = useState<SapForm>(EMPTY_SAP_FORM);
   const [filterSource, setFilterSource] = useState<string>('All');
 
+  // Nutriscope import state
+  const [importScans, setImportScans] = useState<NutriscopeScan[] | null>(null);
+  const [importError, setImportError] = useState<string>('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importFieldOverride, setImportFieldOverride] = useState<string>('');
+  const [importCrop, setImportCrop] = useState<string>('');
+  const [importGrowthStage, setImportGrowthStage] = useState<string>('');
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   // Collect all field names from soil tests, sap tests and existing fields
   const allFields = useMemo(() => {
     const fromTests = soilTests.map(t => t.field);
@@ -270,6 +455,78 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
     persist({ ...db, sapTests: sapTests.filter(t => t.id !== id) });
   }
 
+  async function handleNutriscopeFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true);
+    setImportError('');
+    setImportScans(null);
+    try {
+      const scans = await parseNutriscopeXlsx(file);
+      if (scans.length === 0) {
+        setImportError('No scan data found in this file. Check it contains the "Tous les Minéraux Combinés" sheet.');
+      } else {
+        // Pre-fill field override with what was found in the file
+        setImportFieldOverride(scans[0].fieldName || '');
+        setImportScans(scans);
+        setView('sap'); // switch to sap view so preview is visible
+      }
+    } catch (err: any) {
+      setImportError(err?.message ?? 'Failed to parse file');
+    } finally {
+      setImportLoading(false);
+      // reset input so same file can be re-uploaded
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  }
+
+  function confirmNutriscopeImport() {
+    if (!importScans) return;
+    const fieldName = importFieldOverride.trim() || importScans[0]?.fieldName || 'Unknown field';
+    const crop = importCrop.trim();
+    const growthStage = importGrowthStage.trim();
+
+    const newTests: SapTest[] = importScans.map(scan => {
+      // Build a notes string from any Déficient/Excès statuses
+      const alerts = Object.entries(scan.statuses)
+        .filter(([, s]) => s && s !== 'Normal' && s !== 'Optimal' && s !== 'Optimale')
+        .map(([mineral, status]) => `${mineral}: ${status}`);
+
+      return {
+        id: uid(),
+        date: scan.date || new Date().toISOString().slice(0, 10),
+        field: fieldName,
+        crop: crop || '',
+        growthStage: growthStage || undefined,
+        leaf: 'both' as const,
+        readings: scan.readings,
+        notes: alerts.length > 0 ? `Nutriscope alerts: ${alerts.join(', ')}` : undefined,
+        source: 'Nutriscope',
+        contractContext: undefined,
+      };
+    });
+
+    // Deduplicate: skip any scan already imported (same date + field combination & similar readings)
+    const existing = db.sapTests || [];
+    const toAdd = newTests.filter(n =>
+      !existing.some(e => e.date === n.date && e.field === n.field &&
+        e.readings.nitrogen === n.readings.nitrogen)
+    );
+
+    if (toAdd.length === 0) {
+      setImportError('These scans are already in the database — nothing new to import.');
+      return;
+    }
+
+    persist({ ...db, sapTests: [...existing, ...toAdd] });
+    addActivity(`Imported ${toAdd.length} Nutriscope sap test${toAdd.length > 1 ? 's' : ''} for ${fieldName}`);
+    setImportScans(null);
+    setImportError('');
+    setImportFieldOverride('');
+    setImportCrop('');
+    setImportGrowthStage('');
+  }
+
   function editSapTest(t: SapTest) {
     setSapForm({
       date: t.date,
@@ -347,7 +604,32 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
         <div style={{ flex: 1 }} />
         <button className="btn-add" onClick={() => { setSoilForm(EMPTY_FORM); setEditSoilId(null); setShowSoilModal(true); }}>+ Soil test</button>
         <button className="btn-add" onClick={() => { setSapForm(EMPTY_SAP_FORM); setEditSapId(null); setShowSapModal(true); }}>+ Sap test</button>
+        <button
+          className="btn-add"
+          style={{ background: '#1a3c2e', color: '#a8d5b5', borderColor: '#1a3c2e' }}
+          onClick={() => importInputRef.current?.click()}
+          disabled={importLoading}
+          title="Import Nutriscope/Senseen Excel export (.xlsx)"
+        >
+          {importLoading ? '⏳ Reading…' : '⬆ Import Nutriscope'}
+        </button>
+        {/* Hidden file input */}
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".xlsx"
+          style={{ display: 'none' }}
+          onChange={handleNutriscopeFile}
+        />
       </div>
+
+      {/* Import error banner */}
+      {importError && (
+        <div style={{ background: '#fdf0f0', border: '1px solid #e57373', borderRadius: 6, padding: '8px 12px', marginBottom: 10, fontSize: 13, color: '#912e2e', display: 'flex', alignItems: 'center', gap: 8 }}>
+          ⚠ {importError}
+          <button onClick={() => setImportError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#912e2e', fontSize: 16, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* KPI strip */}
       <div className="metric-grid" style={{ marginBottom: '1rem' }}>
@@ -374,6 +656,118 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
           <div className="metric-sub">deficiency or pH issue</div>
         </div>
       </div>
+
+      {/* ── NUTRISCOPE IMPORT PREVIEW ─────────────────────────────────────── */}
+      {importScans && (
+        <div className="card" style={{ marginBottom: '1rem', border: '2px solid #1a3c2e' }}>
+          <div className="card-title" style={{ color: '#1a3c2e' }}>
+            📥 Nutriscope import — {importScans.length} scan{importScans.length > 1 ? 's' : ''} found
+          </div>
+
+          {/* Field / crop / growth stage override */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div className="field-row" style={{ flex: '2 1 200px' }}>
+              <label className="form-label">Field name</label>
+              <input
+                type="text"
+                list="import-fields"
+                value={importFieldOverride}
+                onChange={e => setImportFieldOverride(e.target.value)}
+                placeholder="Detected from file…"
+              />
+              <datalist id="import-fields">
+                {db.fields.map(f => <option key={f.name} value={f.name} />)}
+              </datalist>
+            </div>
+            <div className="field-row" style={{ flex: '1 1 140px' }}>
+              <label className="form-label">Crop (optional)</label>
+              <input type="text" value={importCrop} onChange={e => setImportCrop(e.target.value)} placeholder="Winter wheat…" list="import-crops" />
+              <datalist id="import-crops">
+                {db.fields.map(f => f.crop).filter((c, i, a) => c && a.indexOf(c) === i).map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div className="field-row" style={{ flex: '1 1 120px' }}>
+              <label className="form-label">Growth stage</label>
+              <input type="text" value={importGrowthStage} onChange={e => setImportGrowthStage(e.target.value)} placeholder="GS39…" />
+            </div>
+          </div>
+
+          {/* Preview table */}
+          <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #1a3c2e', textAlign: 'left' }}>
+                  <th style={{ padding: '4px 8px' }}>Date</th>
+                  <th style={{ padding: '4px 8px' }}>Scan ID</th>
+                  <th style={{ padding: '4px 8px' }}>N</th>
+                  <th style={{ padding: '4px 8px' }}>P</th>
+                  <th style={{ padding: '4px 8px' }}>K</th>
+                  <th style={{ padding: '4px 8px' }}>Ca</th>
+                  <th style={{ padding: '4px 8px' }}>Mg</th>
+                  <th style={{ padding: '4px 8px' }}>S</th>
+                  <th style={{ padding: '4px 8px' }}>pH</th>
+                  <th style={{ padding: '4px 8px' }}>EC</th>
+                  <th style={{ padding: '4px 8px' }}>Fe</th>
+                  <th style={{ padding: '4px 8px' }}>Zn</th>
+                  <th style={{ padding: '4px 8px' }}>Cu</th>
+                  <th style={{ padding: '4px 8px' }}>Alerts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importScans.map(scan => {
+                  const alerts = Object.entries(scan.statuses)
+                    .filter(([, s]) => s && s !== 'Normal' && s !== 'Optimal' && s !== 'Optimale');
+                  return (
+                    <tr key={scan.scanId} style={{ borderBottom: '1px solid #e8f5e9' }}>
+                      <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{scan.date}</td>
+                      <td style={{ padding: '4px 8px', color: '#666', fontSize: 11 }}>{scan.scanId}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.nitrogen ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.phosphorus ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.potassium ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.calcium ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.magnesium ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.sulphur ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.ph ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.ec ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.iron ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.zinc ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>{scan.readings.copper ?? '—'}</td>
+                      <td style={{ padding: '4px 8px' }}>
+                        {alerts.length > 0
+                          ? alerts.map(([m, s]) => (
+                              <span key={m} className={`badge ${s.toLowerCase().includes('déf') || s.toLowerCase().includes('def') ? 'bg-red' : 'bg-amber'}`} style={{ fontSize: 10, marginRight: 3 }}>
+                                {m}: {s}
+                              </span>
+                            ))
+                          : <span style={{ color: '#2e7d32' }}>✓</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              className="btn-primary"
+              style={{ background: '#1a3c2e' }}
+              onClick={confirmNutriscopeImport}
+            >
+              ✓ Import {importScans.length} scan{importScans.length > 1 ? 's' : ''}
+            </button>
+            <button
+              className="btn-cancel"
+              onClick={() => { setImportScans(null); setImportError(''); }}
+            >
+              Cancel
+            </button>
+            <span style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
+              All values in ppm · Alerts from Nutriscope status column
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── OVERVIEW ──────────────────────────────────────────────────────── */}
       {view === 'overview' && (
@@ -676,11 +1070,21 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
                     {t.readings.brixOld !== undefined && <span className="badge bg-blue">Brix (old) {t.readings.brixOld}</span>}
                     {t.readings.ph !== undefined && <span className={`badge ${phColor(t.readings.ph)}`}>pH {t.readings.ph}</span>}
                     {t.readings.ec !== undefined && <span className="badge bg-blue">EC {t.readings.ec}</span>}
+                    {t.readings.nitrogen !== undefined && <span className="badge bg-blue">N {t.readings.nitrogen} ppm</span>}
                     {t.readings.nitrate !== undefined && <span className="badge bg-amber">NO₃ {t.readings.nitrate} ppm</span>}
                     {t.readings.ammonium !== undefined && <span className="badge bg-amber">NH₄ {t.readings.ammonium} ppm</span>}
+                    {t.readings.phosphorus !== undefined && <span className="badge bg-blue">P {t.readings.phosphorus} ppm</span>}
                     {t.readings.potassium !== undefined && <span className="badge bg-blue">K {t.readings.potassium} ppm</span>}
                     {t.readings.calcium !== undefined && <span className="badge bg-blue">Ca {t.readings.calcium} ppm</span>}
                     {t.readings.magnesium !== undefined && <span className="badge bg-blue">Mg {t.readings.magnesium} ppm</span>}
+                    {t.readings.sulphur !== undefined && <span className="badge bg-blue">S {t.readings.sulphur} ppm</span>}
+                    {t.readings.iron !== undefined && <span className="badge bg-blue">Fe {t.readings.iron} ppm</span>}
+                    {t.readings.zinc !== undefined && <span className="badge bg-blue">Zn {t.readings.zinc} ppm</span>}
+                    {t.readings.copper !== undefined && <span className="badge bg-blue">Cu {t.readings.copper} ppm</span>}
+                    {t.readings.manganese !== undefined && <span className="badge bg-blue">Mn {t.readings.manganese} ppm</span>}
+                    {t.readings.boron !== undefined && <span className="badge bg-blue">B {t.readings.boron} ppm</span>}
+                    {t.readings.molybdenum !== undefined && <span className="badge bg-blue">Mo {t.readings.molybdenum} ppm</span>}
+                    {t.readings.silica !== undefined && <span className="badge bg-blue">Si {t.readings.silica} ppm</span>}
                   </div>
                   {t.recommendation && (
                     <div style={{ fontSize: 13, color: '#2e7d32', background: '#f0f7ee', borderRadius: 6, padding: '5px 10px', marginTop: 6 }}>

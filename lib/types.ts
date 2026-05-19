@@ -383,13 +383,24 @@ export interface SapTestReadings {
   brixOld?: number;       // %
   ph?: number;
   ec?: number;            // mS/cm
-  nitrate?: number;       // ppm
+  nitrate?: number;       // ppm (NO3-N)
   ammonium?: number;      // ppm
   potassium?: number;     // ppm
   calcium?: number;       // ppm
   magnesium?: number;     // ppm
   sodium?: number;        // ppm
   chloride?: number;      // ppm
+  // Extended Nutriscope / Senseen sap test minerals
+  nitrogen?: number;      // ppm — Azote Total (total N)
+  phosphorus?: number;    // ppm — Phosphore
+  sulphur?: number;       // ppm — Soufre
+  copper?: number;        // ppm — Cuivre
+  molybdenum?: number;    // ppm — Molybdène
+  iron?: number;          // ppm — Fer
+  silica?: number;        // ppm — Silice
+  zinc?: number;          // ppm — Zinc
+  boron?: number;         // ppm — Bore
+  manganese?: number;     // ppm — Manganèse
 }
 
 export interface SapTest {
