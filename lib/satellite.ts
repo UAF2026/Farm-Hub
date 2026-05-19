@@ -327,7 +327,10 @@ const NDVI_EVALSCRIPT = `
 //VERSION=3
 function setup() {
   return {
-    input: [{ bands: ["B04", "B08", "CLM", "dataMask"], units: "REFLECTANCE" }],
+    input: [
+      { bands: ["B04", "B08", "dataMask"], units: "REFLECTANCE" },
+      { bands: ["CLM"], units: "DN" }
+    ],
     output: [
       { id: "ndvi", bands: 1, sampleType: "FLOAT32" },
       { id: "dataMask", bands: 1, sampleType: "UINT8" }
@@ -336,7 +339,7 @@ function setup() {
 }
 function evaluatePixel(sample) {
   const ndvi = (sample.B08 - sample.B04) / (sample.B08 + sample.B04);
-  // Mask clouds and invalid pixels
+  // Mask clouds (CLM=1 means cloud) and invalid pixels
   const valid = sample.dataMask === 1 && sample.CLM === 0 ? 1 : 0;
   return { ndvi: [ndvi], dataMask: [valid] };
 }
