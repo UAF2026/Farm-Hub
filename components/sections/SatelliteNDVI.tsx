@@ -130,8 +130,10 @@ export default function SatelliteNDVI({ db }: Props) {
       try { json = JSON.parse(text); } catch { throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`); }
       if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
       // Show first error if all fields failed
-      const firstError = json.results?.find((r: {error?: string}) => r.error);
-      const errorDetail = firstError ? ` — First error: ${(firstError as {field: string; error: string}).field}: ${(firstError as {error: string}).error}` : '';
+      type SyncResult = { field: string; parcel: string; snapshots: number; error?: string };
+      const results = (json.results ?? []) as SyncResult[];
+      const firstError = results.find(r => r.error);
+      const errorDetail = firstError ? ` — First error: ${firstError.field}: ${firstError.error}` : '';
       setSyncResult(`✅ Synced: ${json.snapshotsStored} snapshots across ${json.fieldsProcessed} fields. Errors: ${json.errors}${errorDetail}`);
       await loadData();
     } catch (e) {
