@@ -268,6 +268,13 @@ export interface GrainMarketPrice {
   source?: string;
 }
 
+/* ─── JD Field → Hub Field lookup table ────────────────────────────────── */
+export interface JdFieldMapEntry {
+  jdName: string;       // exact string from JdOperation.fieldName
+  hubParcel: string;    // Hub field parcel ID (e.g. "5083", "BIX-Soundess")
+  confirmed: boolean;   // false = auto-suggested, true = James confirmed it
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -285,6 +292,7 @@ export interface FarmData {
   dailyBriefing?: DailyBriefing;
   jdOperations?: JdOperation[];
   jdSyncStatus?: JdSyncStatus;
+  jdFieldMap?: JdFieldMapEntry[];   // JD field name → Hub parcel ID lookup table
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];

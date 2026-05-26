@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { FarmData, JdOperation } from '@/lib/types';
 import { buildAssuranceImport, refreshAssuranceFromMeasurements } from '@/lib/jdAssurance';
+import JdFieldReconcile from './JdFieldReconcile';
 
 interface Props {
   db: FarmData;
@@ -77,6 +78,7 @@ export default function JohnDeere({ db, persist }: Props) {
   const ops = db.jdOperations || [];
   const sync = db.jdSyncStatus;
 
+  const [activeTab, setActiveTab] = useState<'operations' | 'reconcile'>('operations');
   const [filterField, setFilterField] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterSeason, setFilterSeason] = useState<string>('');
@@ -216,11 +218,47 @@ export default function JohnDeere({ db, persist }: Props) {
     );
   }
 
+  // Map completeness indicator for the tab label
+  const mapStats = useMemo(() => {
+    const total = new Set((db.jdOperations || []).map((o) => o.fieldName)).size;
+    const confirmed = (db.jdFieldMap || []).filter((e) => e.confirmed).length;
+    return { total, confirmed };
+  }, [db.jdOperations, db.jdFieldMap]);
+
   return (
     <section className="card">
       <h2>John Deere Operations</h2>
 
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid #333' }}>
+        {([
+          { id: 'operations', label: 'Operations' },
+          { id: 'reconcile', label: `Field Map ${mapStats.confirmed}/${mapStats.total}` },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: '8px 20px', fontSize: 14, border: 'none', cursor: 'pointer',
+              background: 'transparent',
+              color: activeTab === tab.id ? '#4a9' : '#888',
+              borderBottom: activeTab === tab.id ? '2px solid #4a9' : '2px solid transparent',
+              marginBottom: -2, fontWeight: activeTab === tab.id ? 600 : 400,
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Field Map reconciliation panel */}
+      {activeTab === 'reconcile' && (
+        <JdFieldReconcile db={db} persist={persist} />
+      )}
+
+      {/* Operations tab content */}
+      {activeTab === 'operations' && (
+      <><div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           {sync ? (
             <>
@@ -396,6 +434,7 @@ export default function JohnDeere({ db, persist }: Props) {
           </div>
         </>
       )}
+      </>)}{/* end operations tab */}
     </section>
   );
 }
