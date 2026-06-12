@@ -14,6 +14,7 @@ type View = 'outstanding' | 'all' | 'cashflow';
 export default function FinanceSection({ db, persist, addActivity }: Props) {
   const [view, setView] = useState<View>('outstanding');
   const [modal, setModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // null = add new, set = editing existing
   const [type, setType] = useState('Bill');
   const [status, setStatus] = useState('Outstanding');
   const [supplier, setSupplier] = useState('');
@@ -26,6 +27,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const [ref, setRef] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [supplierSearch, setSupplierSearch] = useState('');
   const [scanModal, setScanModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [importSelections, setImportSelections] = useState<Record<number, boolean>>({});
@@ -59,6 +61,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const allFiltered = finance.filter(f => {
     if (typeFilter !== 'all' && f.type !== typeFilter) return false;
     if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
+    if (supplierSearch.trim() && !f.supplier?.toLowerCase().includes(supplierSearch.toLowerCase()) && !f.ref?.toLowerCase().includes(supplierSearch.toLowerCase())) return false;
     return true;
   }).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
@@ -85,21 +88,65 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const vatAmount = calcVat(parseFloat(net) || 0, vatRate);
   const gross = (parseFloat(net) || 0) + vatAmount;
 
+  function openAdd() {
+    resetForm();
+    setEditingId(null);
+    setModal(true);
+  }
+
+  function openEdit(f: Finance, idx: number) {
+    setType(f.type || 'Bill');
+    setStatus(f.status || 'Outstanding');
+    setSupplier(f.supplier || '');
+    setDesc(f.desc || '');
+    setCategory(f.category || 'Other');
+    setDate(f.date || new Date().toISOString().slice(0, 10));
+    setNet(String(f.net ?? ''));
+    setVatRate(f.vatRate || '20%');
+    setDue(f.due || '');
+    setRef(f.ref || '');
+    setEditingId(f.id ?? `__idx_${idx}`);
+    setModal(true);
+  }
+
   function saveFinance() {
     if (!supplier.trim() || !net.trim()) return alert('Supplier and net amount required');
     const n = parseFloat(net);
     if (isNaN(n) || n < 0) return alert('Invalid net amount');
-    const item: Finance = {
-      id: uid(),
-      type, status,
-      supplier: supplier.trim(),
-      desc: desc.trim() || supplier.trim(),
-      category, date,
-      net: n, vat: vatAmount, gross: n + vatAmount, vatRate,
-      due, ref: ref.trim(), amount: n
-    };
-    addActivity(`Added ${type.toLowerCase()}: ${supplier}`);
-    persist({ ...db, finance: [...finance, item] });
+
+    if (editingId !== null) {
+      // Update existing record
+      const updated = finance.map((f, i) => {
+        const matches = editingId.startsWith('__idx_')
+          ? i === parseInt(editingId.replace('__idx_', ''))
+          : f.id === editingId;
+        if (!matches) return f;
+        return {
+          ...f,
+          type, status,
+          supplier: supplier.trim(),
+          desc: desc.trim() || supplier.trim(),
+          category, date,
+          net: n, vat: vatAmount, gross: n + vatAmount, vatRate,
+          due, ref: ref.trim(), amount: n
+        };
+      });
+      addActivity(`Updated ${type.toLowerCase()}: ${supplier}`);
+      persist({ ...db, finance: updated });
+    } else {
+      // Add new record
+      const item: Finance = {
+        id: uid(),
+        type, status,
+        supplier: supplier.trim(),
+        desc: desc.trim() || supplier.trim(),
+        category, date,
+        net: n, vat: vatAmount, gross: n + vatAmount, vatRate,
+        due, ref: ref.trim(), amount: n
+      };
+      addActivity(`Added ${type.toLowerCase()}: ${supplier}`);
+      persist({ ...db, finance: [...finance, item] });
+    }
     resetForm();
     setModal(false);
   }
@@ -108,6 +155,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     setType('Bill'); setStatus('Outstanding'); setSupplier(''); setDesc('');
     setCategory('Other'); setDate(new Date().toISOString().slice(0, 10));
     setNet(''); setVatRate('20%'); setDue(''); setRef('');
+    setEditingId(null);
   }
 
   function deleteFinance(id: string | undefined, idx: number) {
@@ -250,6 +298,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
               </div>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginLeft: 8, flexShrink: 0 }}>
                 <button className="done-btn" onClick={() => markPaid(f.id, idx)}>Paid</button>
+                <button className="btn-primary" onClick={() => openEdit(f, idx)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }}>Edit</button>
                 <button className="del-btn" onClick={() => deleteFinance(f.id, idx)}>×</button>
               </div>
             </div>
@@ -265,7 +314,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     <>
       {/* ── Action buttons ───────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <button className="btn-add" onClick={() => { resetForm(); setModal(true); }}>+ Add record</button>
+        <button className="btn-add" onClick={openAdd}>+ Add record</button>
         {pendingBriefingInvoices.length > 0 && (
           <button className="btn-primary" onClick={openImport} style={{ background: 'var(--primary)', color: '#fff', fontWeight: 600 }}>
             📥 Import {pendingBriefingInvoices.length} invoice{pendingBriefingInvoices.length !== 1 ? 's' : ''} from briefing
@@ -327,6 +376,13 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
       {view === 'all' && (
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={supplierSearch}
+              onChange={(e) => setSupplierSearch(e.target.value)}
+              placeholder="Search supplier or ref…"
+              style={{ padding: '0.4rem 0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 13, flex: '1 1 140px', minWidth: 120 }}
+            />
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ padding: '0.4rem 0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 13 }}>
               <option value="all">All types</option>
               <option value="Bill">Bills (payable)</option>
@@ -360,6 +416,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginLeft: 8, flexShrink: 0 }}>
                         {f.status === 'Outstanding' && <button className="done-btn" onClick={() => markPaid(f.id, idx)}>Paid</button>}
+                        <button className="btn-primary" onClick={() => openEdit(f, idx)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }}>Edit</button>
                         <button className="del-btn" onClick={() => deleteFinance(f.id, idx)}>×</button>
                       </div>
                     </div>
@@ -427,7 +484,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
       {modal && (
         <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box">
-            <div className="modal-title">Add record</div>
+            <div className="modal-title">{editingId !== null ? 'Edit record' : 'Add record'}</div>
             <div className="field-row">
               <label className="form-label">Type</label>
               <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -490,7 +547,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
               <input type="text" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Invoice / bill number" />
             </div>
             <div className="modal-btns">
-              <button className="btn-primary" onClick={saveFinance}>Save</button>
+              <button className="btn-primary" onClick={saveFinance}>{editingId !== null ? 'Save changes' : 'Save'}</button>
               <button className="btn-cancel" onClick={() => setModal(false)}>Cancel</button>
             </div>
           </div>
