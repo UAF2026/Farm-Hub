@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 
 // Web Speech API types (not in default TS lib)
+type SpeechRecognitionAlternative = { transcript: string; confidence: number };
+type SpeechRecognitionResultItem = { isFinal: boolean; [index: number]: SpeechRecognitionAlternative };
+type SpeechRecognitionEvent = { resultIndex: number; results: { length: number; [index: number]: SpeechRecognitionResultItem } };
 type SpeechRecognitionInstance = EventTarget & {
   continuous: boolean;
   interimResults: boolean;
