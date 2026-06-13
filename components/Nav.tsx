@@ -21,6 +21,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'farms', label: 'Farms' },
   { id: 'johndeere', label: 'JD Ops' },
   { id: 'links', label: 'Links' },
+  { id: 'braindump', label: '🧠 Dump' },
   { id: 'assistant', label: 'AI' },
   { id: 'settings', label: 'Settings' },
 ];
