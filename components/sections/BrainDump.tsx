@@ -2,6 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react';
 
+// Web Speech API types (not in default TS lib)
+type SpeechRecognitionInstance = EventTarget & {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
 type Tag = 'untagged' | 'job' | 'idea' | 'reminder' | 'question';
 type Status = 'open' | 'actioned' | 'dismissed';
 
@@ -55,7 +67,7 @@ export default function BrainDump() {
   const [listening, setListening] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => { loadEntries(); }, []);
 
@@ -109,10 +121,11 @@ export default function BrainDump() {
   }
 
   function toggleVoice() {
-    const SpeechRecognition = (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition }).SpeechRecognition
-      || (window as Window & { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition;
+    type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+    const w = window as Window & { SpeechRecognition?: SpeechRecognitionCtor; webkitSpeechRecognition?: SpeechRecognitionCtor };
+    const SpeechRecognitionCtor = w.SpeechRecognition || w.webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
+    if (!SpeechRecognitionCtor) {
       alert('Voice input not supported in this browser. Try Chrome on Android or Safari on iPhone.');
       return;
     }
@@ -123,7 +136,7 @@ export default function BrainDump() {
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-GB';
