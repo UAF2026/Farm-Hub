@@ -55,7 +55,7 @@ export default function BrainDump() {
   const [listening, setListening] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
 
   useEffect(() => { loadEntries(); }, []);
 
