@@ -1,9 +1,30 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { FarmData } from '@/lib/types';
+import { FarmData, InvoiceSettings } from '@/lib/types';
 import type { Finance } from '@/lib/types';
 import { fmtDate, fmtMoney, uid } from '@/lib/utils';
+
+interface InvoiceLine {
+  id: string;
+  description: string;
+  qty: string;
+  unitPrice: string;
+  vatRate: string;
+}
+
+const DEFAULT_INV_SETTINGS: InvoiceSettings = {
+  businessName: 'M J Hunt & Son',
+  address: 'Upper Assendon Farm\nAssendon\nHenley-on-Thames\nOxfordshire\nRG9 6AU',
+  vatNumber: '',
+  bankName: '',
+  accountName: 'M J Hunt & Son',
+  sortCode: '',
+  accountNumber: '',
+  paymentTerms: '30 days from invoice date',
+  invoicePrefix: 'UAF',
+  nextInvoiceNumber: 1,
+};
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
 
@@ -31,6 +52,18 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const [scanModal, setScanModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [importSelections, setImportSelections] = useState<Record<number, boolean>>({});
+
+  // ── Create customer invoice state ──────────────────────────────────────
+  const [createModal, setCreateModal] = useState(false);
+  const [custName, setCustName] = useState('');
+  const [custAddress, setCustAddress] = useState('');
+  const [custEmail, setCustEmail] = useState('');
+  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invDue, setInvDue] = useState('');
+  const [invNotes, setInvNotes] = useState('');
+  const [invLines, setInvLines] = useState<InvoiceLine[]>([
+    { id: uid(), description: '', qty: '1', unitPrice: '', vatRate: '20%' }
+  ]);
 
   const finance = db.finance || [];
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -214,6 +247,186 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     setImportModal(false);
   }
 
+  // ── Invoice line helpers ──────────────────────────────────────────────────
+  function addLine() {
+    setInvLines(ls => [...ls, { id: uid(), description: '', qty: '1', unitPrice: '', vatRate: '20%' }]);
+  }
+  function removeLine(id: string) {
+    setInvLines(ls => ls.filter(l => l.id !== id));
+  }
+  function updateLine(id: string, field: keyof InvoiceLine, value: string) {
+    setInvLines(ls => ls.map(l => l.id === id ? { ...l, [field]: value } : l));
+  }
+
+  function calcLineAmounts(line: InvoiceLine) {
+    const qty = parseFloat(line.qty) || 0;
+    const unit = parseFloat(line.unitPrice) || 0;
+    const net = Math.round(qty * unit * 100) / 100;
+    const vatPct = line.vatRate === 'Exempt' || line.vatRate === '0%' ? 0 : parseFloat(line.vatRate) / 100;
+    const vat = Math.round(net * vatPct * 100) / 100;
+    return { net, vat, gross: net + vat };
+  }
+
+  const invTotals = useMemo(() => {
+    return invLines.reduce((acc, l) => {
+      const { net, vat, gross } = calcLineAmounts(l);
+      return { net: acc.net + net, vat: acc.vat + vat, gross: acc.gross + gross };
+    }, { net: 0, vat: 0, gross: 0 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invLines]);
+
+  function resetCreateForm() {
+    setCustName(''); setCustAddress(''); setCustEmail('');
+    setInvDate(new Date().toISOString().slice(0, 10)); setInvDue(''); setInvNotes('');
+    setInvLines([{ id: uid(), description: '', qty: '1', unitPrice: '', vatRate: '20%' }]);
+  }
+
+  function generateAndDownloadInvoice() {
+    if (!custName.trim()) return alert('Customer name is required');
+    if (invLines.every(l => !l.description.trim())) return alert('Add at least one line item with a description');
+
+    const settings = db.invoiceSettings ?? DEFAULT_INV_SETTINGS;
+    const num = settings.nextInvoiceNumber ?? 1;
+    const invoiceRef = `${settings.invoicePrefix}-${String(num).padStart(3, '0')}`;
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Build HTML invoice
+    const addressLines = settings.address.split('\n').join('<br>');
+    const custAddrLines = custAddress.split('\n').join('<br>');
+
+    const linesHtml = invLines.map(l => {
+      const { net, vat, gross } = calcLineAmounts(l);
+      if (!l.description.trim()) return '';
+      return `
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${l.description}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${l.qty}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">£${parseFloat(l.unitPrice || '0').toFixed(2)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${l.vatRate}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">£${net.toFixed(2)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">£${vat.toFixed(2)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">£${gross.toFixed(2)}</td>
+        </tr>`;
+    }).join('');
+
+    const { net: totNet, vat: totVat, gross: totGross } = invTotals;
+
+    const bankHtml = (settings.bankName || settings.sortCode)
+      ? `<p><strong>Bank:</strong> ${settings.bankName} &nbsp;|&nbsp; <strong>Account name:</strong> ${settings.accountName} &nbsp;|&nbsp; <strong>Sort code:</strong> ${settings.sortCode} &nbsp;|&nbsp; <strong>Account no:</strong> ${settings.accountNumber}</p>`
+      : '';
+    const vatHtml = settings.vatNumber ? `<p><strong>VAT Registration No:</strong> ${settings.vatNumber}</p>` : '';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Invoice ${invoiceRef}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; margin: 0; padding: 32px; }
+  h1 { font-size: 28px; margin: 0 0 4px; color: #1a3c5e; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 32px; }
+  .header-left { max-width: 60%; }
+  .header-right { text-align: right; }
+  .label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 0.04em; }
+  .big { font-size: 20px; font-weight: 700; color: #1a3c5e; }
+  .addresses { display: flex; justify-content: space-between; margin-bottom: 28px; }
+  .address-block { width: 48%; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #1a3c5e; color: #fff; padding: 8px; text-align: right; font-size: 12px; }
+  th:first-child { text-align: left; }
+  .totals td { padding: 6px 8px; }
+  .totals .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #1a3c5e; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #555; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>${settings.businessName}</h1>
+    <p style="color:#555;margin:4px 0 0;">${addressLines}</p>
+  </div>
+  <div class="header-right">
+    <div class="label">Invoice</div>
+    <div class="big">${invoiceRef}</div>
+    <p style="margin:8px 0 2px;"><strong>Date:</strong> ${fmtDate(invDate)}</p>
+    ${invDue ? `<p style="margin:2px 0;"><strong>Due:</strong> ${fmtDate(invDue)}</p>` : ''}
+    <p style="margin:2px 0;color:#888;font-size:12px;">${settings.paymentTerms}</p>
+  </div>
+</div>
+
+<div class="addresses">
+  <div class="address-block">
+    <div class="label" style="margin-bottom:6px;">Bill to</div>
+    <strong>${custName}</strong>
+    ${custAddrLines ? `<br>${custAddrLines}` : ''}
+    ${custEmail ? `<br>${custEmail}` : ''}
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;width:40%;">Description</th>
+      <th>Qty</th>
+      <th>Unit price</th>
+      <th>VAT</th>
+      <th>Net</th>
+      <th>VAT £</th>
+      <th>Gross</th>
+    </tr>
+  </thead>
+  <tbody>${linesHtml}</tbody>
+</table>
+
+<table class="totals" style="width:300px;margin-left:auto;">
+  <tr><td>Subtotal (net)</td><td style="text-align:right;">£${totNet.toFixed(2)}</td></tr>
+  <tr><td>VAT</td><td style="text-align:right;">£${totVat.toFixed(2)}</td></tr>
+  <tr class="total-row"><td>Total due</td><td style="text-align:right;">£${totGross.toFixed(2)}</td></tr>
+</table>
+
+${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
+
+<div class="footer">
+  ${bankHtml}
+  ${vatHtml}
+</div>
+</body>
+</html>`;
+
+    // Open in new window → print → browser save-as-PDF
+    const w = window.open('', '_blank');
+    if (!w) return alert('Allow pop-ups to download the invoice PDF');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+
+    // Record in Finance ledger as outstanding receivable
+    const ledgerItem: Finance = {
+      id: uid(),
+      type: 'Invoice',
+      status: 'Outstanding',
+      supplier: custName.trim(),
+      desc: invLines.filter(l => l.description.trim()).map(l => l.description).join(', '),
+      category: 'Other',
+      date: invDate,
+      net: totNet,
+      vat: totVat,
+      gross: totGross,
+      vatRate: invLines.length === 1 ? invLines[0].vatRate : 'Mixed',
+      due: invDue,
+      ref: invoiceRef,
+      amount: totGross,
+    };
+    const updatedSettings = { ...(db.invoiceSettings ?? DEFAULT_INV_SETTINGS), nextInvoiceNumber: num + 1 };
+    addActivity(`Created invoice ${invoiceRef} for ${custName} — ${fmtMoney(totGross)}`);
+    persist({ ...db, finance: [...finance, ledgerItem], invoiceSettings: updatedSettings });
+
+    setCreateModal(false);
+    resetCreateForm();
+  }
+
   function exportCSV() {
     const headers = ['Type', 'Status', 'Supplier', 'Description', 'Category', 'Date', 'Net', 'VAT', 'Gross', 'Due', 'Ref'];
     const rows = allFiltered.map(f => [f.type, f.status, f.supplier, f.desc, f.category, f.date, f.net, f.vat, f.gross, f.due, f.ref]);
@@ -315,6 +528,9 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
       {/* ── Action buttons ───────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
         <button className="btn-add" onClick={openAdd}>+ Add record</button>
+        <button className="btn-primary" onClick={() => { resetCreateForm(); setCreateModal(true); }} style={{ background: 'var(--green, #166534)', color: '#fff', fontWeight: 600 }}>
+          🧾 Create invoice
+        </button>
         {pendingBriefingInvoices.length > 0 && (
           <button className="btn-primary" onClick={openImport} style={{ background: 'var(--primary)', color: '#fff', fontWeight: 600 }}>
             📥 Import {pendingBriefingInvoices.length} invoice{pendingBriefingInvoices.length !== 1 ? 's' : ''} from briefing
@@ -599,6 +815,114 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
                 Import {Object.values(importSelections).filter(Boolean).length} selected
               </button>
               <button className="btn-cancel" onClick={() => setImportModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create customer invoice modal ────────────────────────────────── */}
+      {createModal && (
+        <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setCreateModal(false)}>
+          <div className="modal-box" style={{ maxWidth: 680 }}>
+            <div className="modal-title">Create invoice</div>
+
+            {/* Customer details */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+              <div className="field-row" style={{ margin: 0 }}>
+                <label className="form-label">Customer name *</label>
+                <input type="text" value={custName} onChange={e => setCustName(e.target.value)} placeholder="e.g. Blenheim Estate" />
+              </div>
+              <div className="field-row" style={{ margin: 0 }}>
+                <label className="form-label">Customer email</label>
+                <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} placeholder="accounts@example.com" />
+              </div>
+            </div>
+            <div className="field-row">
+              <label className="form-label">Customer address</label>
+              <textarea value={custAddress} onChange={e => setCustAddress(e.target.value)} rows={3} placeholder="Address (optional)" style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: 13, resize: 'vertical' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+              <div className="field-row" style={{ margin: 0 }}>
+                <label className="form-label">Invoice date</label>
+                <input type="date" value={invDate} onChange={e => setInvDate(e.target.value)} />
+              </div>
+              <div className="field-row" style={{ margin: 0 }}>
+                <label className="form-label">Due date</label>
+                <input type="date" value={invDue} onChange={e => setInvDue(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Line items */}
+            <div style={{ marginBottom: 8 }}>
+              <label className="form-label">Line items</label>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 4px', fontWeight: 600, width: '38%' }}>Description</th>
+                      <th style={{ textAlign: 'right', padding: '4px 4px', fontWeight: 600, width: '8%' }}>Qty</th>
+                      <th style={{ textAlign: 'right', padding: '4px 4px', fontWeight: 600, width: '14%' }}>Unit £</th>
+                      <th style={{ textAlign: 'right', padding: '4px 4px', fontWeight: 600, width: '10%' }}>VAT</th>
+                      <th style={{ textAlign: 'right', padding: '4px 4px', fontWeight: 600, width: '12%' }}>Net</th>
+                      <th style={{ textAlign: 'right', padding: '4px 4px', fontWeight: 600, width: '12%' }}>Gross</th>
+                      <th style={{ width: '6%' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invLines.map(line => {
+                      const { net, gross } = calcLineAmounts(line);
+                      return (
+                        <tr key={line.id}>
+                          <td style={{ padding: '4px 2px' }}>
+                            <input type="text" value={line.description} onChange={e => updateLine(line.id, 'description', e.target.value)} placeholder="Description of work / goods" style={{ width: '100%', padding: '0.3rem', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }} />
+                          </td>
+                          <td style={{ padding: '4px 2px' }}>
+                            <input type="number" value={line.qty} onChange={e => updateLine(line.id, 'qty', e.target.value)} min="0" step="0.5" style={{ width: '100%', padding: '0.3rem', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '4px 2px' }}>
+                            <input type="number" value={line.unitPrice} onChange={e => updateLine(line.id, 'unitPrice', e.target.value)} min="0" step="0.01" placeholder="0.00" style={{ width: '100%', padding: '0.3rem', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12, textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '4px 2px' }}>
+                            <select value={line.vatRate} onChange={e => updateLine(line.id, 'vatRate', e.target.value)} style={{ width: '100%', padding: '0.3rem', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
+                              <option>20%</option><option>5%</option><option>0%</option><option>Exempt</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '4px 2px', textAlign: 'right', fontSize: 12, color: 'var(--text-muted)' }}>£{net.toFixed(2)}</td>
+                          <td style={{ padding: '4px 2px', textAlign: 'right', fontSize: 12, fontWeight: 600 }}>£{gross.toFixed(2)}</td>
+                          <td style={{ padding: '4px 2px', textAlign: 'center' }}>
+                            {invLines.length > 1 && <button className="del-btn" onClick={() => removeLine(line.id)}>×</button>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <button className="btn-primary" onClick={addLine} style={{ marginTop: 6, fontSize: 12, padding: '0.25rem 0.75rem' }}>+ Add line</button>
+            </div>
+
+            {/* Totals summary */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, padding: '8px 0', borderTop: '1px solid var(--border)', marginBottom: 8, fontSize: 13 }}>
+              <span>Net: <strong>{fmtMoney(invTotals.net)}</strong></span>
+              <span>VAT: <strong>{fmtMoney(invTotals.vat)}</strong></span>
+              <span style={{ fontSize: 15 }}>Total: <strong style={{ color: 'var(--primary)' }}>{fmtMoney(invTotals.gross)}</strong></span>
+            </div>
+
+            <div className="field-row">
+              <label className="form-label">Notes (optional)</label>
+              <input type="text" value={invNotes} onChange={e => setInvNotes(e.target.value)} placeholder="Any notes to print on the invoice" />
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+              The invoice will open for printing / saving as PDF. It will also be recorded in the Finance ledger automatically.
+              {!(db.invoiceSettings?.bankName) && <span style={{ color: 'var(--amber, #d97706)' }}> ⚠ Add your bank details in Settings so they print on the invoice.</span>}
+            </p>
+
+            <div className="modal-btns">
+              <button className="btn-primary" onClick={generateAndDownloadInvoice} style={{ background: 'var(--green, #166534)', color: '#fff' }}>
+                Generate &amp; download invoice
+              </button>
+              <button className="btn-cancel" onClick={() => setCreateModal(false)}>Cancel</button>
             </div>
           </div>
         </div>

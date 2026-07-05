@@ -275,6 +275,20 @@ export interface JdFieldMapEntry {
   confirmed: boolean;   // false = auto-suggested, true = James confirmed it
 }
 
+/* ─── Invoice Settings (used for customer-facing invoice generation) ───────── */
+export interface InvoiceSettings {
+  businessName: string;      // e.g. 'M J Hunt & Son'
+  address: string;           // multi-line, use \n
+  vatNumber: string;         // e.g. 'GB 123 4567 89'
+  bankName: string;          // e.g. 'Barclays'
+  accountName: string;       // e.g. 'M J Hunt & Son'
+  sortCode: string;          // e.g. '20-00-00'
+  accountNumber: string;     // e.g. '12345678'
+  paymentTerms: string;      // e.g. '30 days from invoice date'
+  invoicePrefix: string;     // e.g. 'UAF' → UAF-001, UAF-002…
+  nextInvoiceNumber: number; // auto-increments on each invoice created
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -297,6 +311,7 @@ export interface FarmData {
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];
   grainTrading?: GrainTradingData;
+  invoiceSettings?: InvoiceSettings;
 }
 
 /* ─── Agronomy (Gatekeeper / Luke Cotton recommendations) ──────────────────── */
