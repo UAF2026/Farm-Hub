@@ -289,6 +289,105 @@ export interface InvoiceSettings {
   nextInvoiceNumber: number; // auto-increments on each invoice created
 }
 
+/* ─── Farm Bible ─────────────────────────────────────────────────────────── */
+
+/** Overview facts about the farm itself */
+export interface FarmOverview {
+  history: string;              // narrative history — 4th gen, 1750s farmhouse, etc.
+  totalAreaHa: number;          // total area including tenanted land
+  ownedAreaHa: number;
+  tenantedAreaHa: number;
+  enterprises: string;          // comma-separated: Arable, Wagyu, Breeding cattle, etc.
+  farmType: string;             // e.g. "Mixed arable and beef"
+  sbi: string;                  // 106227532
+  vatRegistered: boolean;
+  vatNumber: string;
+  notes: string;
+}
+
+/** Key person associated with the farm */
+export interface FarmPerson {
+  id: string;
+  name: string;
+  role: string;                 // e.g. "Farm Manager", "Agronomist", "Accountant"
+  company?: string;
+  phone?: string;
+  email?: string;
+  notes: string;                // what they do, when to call them, quirks
+}
+
+/** An enterprise (arable, Wagyu, breeding cattle, etc.) with its own economics */
+export interface FarmEnterprise {
+  id: string;
+  name: string;                 // e.g. "Winter wheat", "Wagyu beef", "Breeding cattle"
+  type: 'Arable' | 'Livestock' | 'Diversification' | 'Environmental';
+  targetMargin: number;         // £/ha or £/head
+  targetMarginUnit: 'per_ha' | 'per_head' | 'per_year';
+  fixedCostPerHa?: number;      // machinery, labour, overhead allocation
+  variableCostPerHa?: number;   // seed, fert, spray, contract
+  averageYield?: number;        // t/ha (arable) or kg/head (livestock)
+  yieldUnit?: string;           // 't/ha' | 'kg/head' | 'head/year'
+  averagePrice?: number;        // £/t or £/head
+  notes: string;
+}
+
+/** A farm agreement, contract or obligation */
+export interface FarmAgreement {
+  id: string;
+  name: string;                 // e.g. "CS Higher Tier 1255553", "Kepak Wagyu contract"
+  type: 'Scheme' | 'Sales contract' | 'Tenancy' | 'Supply' | 'Other';
+  counterparty: string;         // RPA, Kepak, Wildfarmed, Lord Alvingham etc.
+  reference?: string;           // agreement number / contract ref
+  startDate?: string;           // ISO date
+  endDate?: string;             // ISO date — RED FLAG if within 12 months
+  annualValue?: number;         // £/yr income or cost (negative = cost)
+  keyObligations: string;       // what must be done / not done
+  keyRisks: string;             // what happens if breached / not renewed
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes: string;
+}
+
+/** A field-level knowledge note — enriches the Field record with institutional memory */
+export interface FieldNote {
+  id: string;
+  fieldName: string;            // must match Field.name or Field.parcel
+  soilType: string;             // e.g. "Chalk over clay", "Brashy chalk"
+  drainage: 'Good' | 'Average' | 'Poor' | 'Very poor';
+  knownIssues: string;          // compaction, wet corner, pylons, watercourse, etc.
+  historicalYield: string;      // e.g. "Wheat 8.5–9.5 t/ha, barley 7 t/ha"
+  bestCrops: string;            // what works well here and why
+  avoidCrops: string;           // what doesn't work well and why
+  accessNotes: string;          // trailer width, steep, muddy gate etc.
+  csOptions?: string;           // CS/SFI options on this field if any
+  notes: string;
+}
+
+/** A recorded farm decision with rationale — the learning log */
+export interface FarmDecision {
+  id: string;
+  date: string;                 // ISO date
+  season?: string;              // e.g. "2025/26"
+  category: 'Cropping' | 'Livestock' | 'Financial' | 'Capital' | 'Land' | 'Scheme' | 'Other';
+  title: string;                // one-line summary
+  decision: string;             // what was decided
+  rationale: string;            // why — the institutional memory
+  outcome?: string;             // filled in later: what actually happened
+  tags?: string[];              // e.g. ['wheat', 'Lodge Farm', 'drought']
+}
+
+/** The full Farm Bible knowledge store */
+export interface FarmBible {
+  overview?: FarmOverview;
+  people: FarmPerson[];
+  enterprises: FarmEnterprise[];
+  agreements: FarmAgreement[];
+  fieldNotes: FieldNote[];
+  decisions: FarmDecision[];
+  lastUpdated?: string;         // ISO timestamp
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -312,6 +411,7 @@ export interface FarmData {
   agronomyVisits?: AgronomyVisit[];
   grainTrading?: GrainTradingData;
   invoiceSettings?: InvoiceSettings;
+  farmBible?: FarmBible;
 }
 
 /* ─── Agronomy (Gatekeeper / Luke Cotton recommendations) ──────────────────── */
