@@ -219,16 +219,26 @@ async function run(req: NextRequest) {
       ops: JdOperationListItem[];
       error?: string;
     }
-    const fieldOpsPairs: FieldOpsPair[] = await pMap(realFields, 6, async (f) => {
+    const fieldOpsPairs: FieldOpsPair[] = await pMap(realFields, 4, async (f) => {
       try {
-        const opsResp = await jdFetch<JdOperationsListResponse>(
-          `${auth.apiBase}/organizations/${org.id}/fields/${f.id}/fieldOperations?count=200`,
-          token,
-          auth.apiBase
-        );
-        const all = opsResp.values || [];
-        const recent = all.filter((o) => {
-          if (!o.startDate) return false;
+        // Paginate through ALL operations for this field — JD may ignore count
+        // or cap it internally. Follow nextPage links until exhausted.
+        const allOps: JdOperationListItem[] = [];
+        let nextOpsUrl: string | null =
+          `${auth.apiBase}/organizations/${org.id}/fields/${f.id}/fieldOperations?count=200`;
+        let opPages = 0;
+        while (nextOpsUrl && opPages < 20) {
+          const opsResp = await jdFetch<JdOperationsListResponse>(
+            nextOpsUrl,
+            token,
+            auth.apiBase
+          );
+          if (opsResp.values) allOps.push(...opsResp.values);
+          nextOpsUrl = linkUri(opsResp.links, 'nextPage');
+          opPages++;
+        }
+        const recent = allOps.filter((o) => {
+          if (!o.startDate) return true; // include ops with no date — filter later
           const t = new Date(o.startDate).getTime();
           return !Number.isNaN(t) && t >= sinceMs;
         });
@@ -322,8 +332,12 @@ async function run(req: NextRequest) {
       fieldsWithOps: fieldOpsPairs.filter((p) => p.ops.length > 0).length,
       operationsWritten: detailedOps.length,
       detailErrorCount: detailErrors.length,
-      detailErrorsSample: detailErrors.slice(0, 5),
+      detailErrorsSample: detailErrors.slice(0, 10),
       perField,
+      // Per-field op counts before detail fetch — helps diagnose if list vs detail is the gap
+      perFieldListCount: Object.fromEntries(
+        fieldOpsPairs.filter(p => p.ops.length > 0).map(p => [p.field.name || p.field.id, p.ops.length])
+      ),
     });
   } catch (e) {
     return NextResponse.json(
