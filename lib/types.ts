@@ -412,6 +412,33 @@ export interface FarmData {
   grainTrading?: GrainTradingData;
   invoiceSettings?: InvoiceSettings;
   farmBible?: FarmBible;
+  purchases?: PurchaseOrder[];
+  purchasesSyncStatus?: { syncedAt: string; ordersFound: number; };
+}
+
+/* ─── Crop Advisors Purchases ─────────────────────────────────────────────── */
+
+export interface PurchaseProduct {
+  name: string;
+  quantity: number;
+  unit: string;        // Tonnes | Litres | Kg
+  bagSize: string;
+  pricePerUnit: number;
+  priceUnit: string;   // Per Tonne | Per Litre | Per Kg
+  totalValue: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  ref: string;         // F604892 | C602650 | S604823
+  type: 'Fertiliser' | 'Chemical' | 'Seed' | 'Other';
+  date: string;
+  paymentDue: string;
+  supplier: string;
+  products: PurchaseProduct[];
+  totalValue: number;
+  cancelled?: boolean;
+  source?: string;     // PDF filename
 }
 
 /* ─── Agronomy (Gatekeeper / Luke Cotton recommendations) ──────────────────── */
