@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
     const token = await getGmailAccessToken();
 
     // Search Gmail for Crop Advisors order emails
-    const query = 'from:orders@cropadvisors.com has:attachment filename:pdf';
+    const query = 'from:orders@cropadvisors.com has:attachment';
     let allMessageIds: string[] = [];
     let pageToken: string | undefined;
 
@@ -313,13 +313,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       ordersFound: orders.length,
+      messagesFound: allMessageIds.length,
       totalSpend: orders.filter(o => !o.cancelled).reduce((s, o) => s + o.totalValue, 0),
       byType: {
         fertiliser: orders.filter(o => o.type === 'Fertiliser' && !o.cancelled).length,
         chemical: orders.filter(o => o.type === 'Chemical' && !o.cancelled).length,
         seed: orders.filter(o => o.type === 'Seed' && !o.cancelled).length,
       },
-      errors: errors.slice(0, 10),
+      errors: errors.slice(0, 20),
     });
   } catch (e) {
     return NextResponse.json(
