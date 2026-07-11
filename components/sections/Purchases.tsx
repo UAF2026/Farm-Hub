@@ -95,6 +95,7 @@ export default function Purchases({ db, persist }: { db: FarmData; persist: (d: 
     let added = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const newOrdersAccumulated: PurchaseOrder[] = [...orders];
 
     for (const file of pdfFiles) {
       try {
@@ -106,20 +107,11 @@ export default function Purchases({ db, persist }: { db: FarmData; persist: (d: 
         });
         const data = await res.json() as { ok: boolean; order?: PurchaseOrder; error?: string };
         if (data.ok && data.order) {
-          // Check if order already exists (by ref)
-          const exists = orders.some(o => o.ref === data.order!.ref);
+          const exists = newOrdersAccumulated.some(o => o.ref === data.order!.ref);
           if (exists) {
             skipped++;
           } else {
-            const newOrders = [...orders, data.order];
-            persist({
-              ...db,
-              purchases: newOrders,
-              purchasesSyncStatus: {
-                syncedAt: new Date().toISOString(),
-                ordersFound: newOrders.length,
-              },
-            });
+            newOrdersAccumulated.push(data.order);
             added++;
           }
         } else {
@@ -130,7 +122,16 @@ export default function Purchases({ db, persist }: { db: FarmData; persist: (d: 
       }
     }
 
+    // Save all new orders in one persist call
     if (added > 0) {
+      persist({
+        ...db,
+        purchases: newOrdersAccumulated,
+        purchasesSyncStatus: {
+          syncedAt: new Date().toISOString(),
+          ordersFound: newOrdersAccumulated.length,
+        },
+      });
       setUploadMsg(`✅ Added ${added} order${added !== 1 ? 's' : ''}${skipped > 0 ? ` · ${skipped} already exist` : ''}${errors.length > 0 ? ` · ${errors.length} failed` : ''}`);
     } else if (skipped > 0) {
       setUploadMsg(`ℹ️ ${skipped} order${skipped !== 1 ? 's' : ''} already in Hub`);
