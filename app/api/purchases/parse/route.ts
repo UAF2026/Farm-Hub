@@ -60,20 +60,18 @@ function parsePdfText(text: string, filename: string): PurchaseOrder | null {
     if (m) { paymentDue = m[1]; break; }
   }
 
-  // 4. Supplier — lines before "Account Reference:" (first non-address company name)
+  // 4. Supplier — first qualifying line after "Please contact Crop Advisors ASAP..."
+  // That line marks the end of the delivery block; supplier address follows immediately
   let supplier = '';
   for (let i = 0; i < lines.length; i++) {
-    if (/^Account Reference:/.test(lines[i])) {
-      // Walk back to find supplier company name — skip addresses, phones, emails, postcodes
-      for (let j = i - 1; j >= Math.max(0, i - 15); j--) {
+    if (/^Please contact Crop Advisors ASAP/i.test(lines[i])) {
+      for (let j = i + 1; j < lines.length; j++) {
         const l = lines[j];
+        if (/^(Brand|Account Reference:)/.test(l)) break;
         if (/^[A-Z]{1,2}\d+\s*\d[A-Z]{2}$/i.test(l)) continue; // postcode
-        if (/^\d[\d\s\-\(\)]+$/.test(l)) continue;              // phone
+        if (/^\d[\d\s\-\(\)]+$/.test(l)) continue;              // phone/account
         if (/@/.test(l)) continue;                               // email
-        if (/^(Tel|Fax|Mobile|Email|Contact|Address|Delivery|Account):?$/i.test(l)) continue;
         if (l.length < 4) continue;
-        // Skip short county/town names (no Ltd/Ltd/Agri in them, just a place name)
-        if (/^(West Sussex|East Sussex|North Yorkshire|South Yorkshire|West Yorkshire|East Yorkshire|Greater Manchester|Tyne and Wear|County Durham|Northumberland|Cumbria|Lancashire|Cheshire|Shropshire|Staffordshire|Derbyshire|Nottinghamshire|Leicestershire|Lincolnshire|Rutland|Northamptonshire|Warwickshire|Worcestershire|Herefordshire|Gloucestershire|Oxfordshire|Buckinghamshire|Hertfordshire|Bedfordshire|Cambridgeshire|Norfolk|Suffolk|Essex|Kent|Surrey|Hampshire|Berkshire|Wiltshire|Dorset|Somerset|Devon|Cornwall)$/i.test(l)) continue;
         supplier = l;
         break;
       }
@@ -81,48 +79,56 @@ function parsePdfText(text: string, filename: string): PurchaseOrder | null {
     }
   }
 
-  // 5. Products — structured block starting at "Brand"
+  // 5. Products — find "Quantity" label, then work backwards for name and forward for details
+  // Structure: Brand → [product name] → [account ref lines in some PDFs] → Quantity → qty → Bag Size → bagsize → Price → £price → Unit → Per X
   const products: PurchaseProduct[] = [];
+
+  // Find "Brand" marker first
   let brandIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i] === 'Brand') { brandIdx = i; break; }
   }
 
   if (brandIdx >= 0) {
-    // After "Brand", lines come in groups:
-    // product_name, "Quantity", qty+unit, "Bag Size", bagsize, "Price", £price, "Unit", per_unit
-    // There may be multiple products, each group following the same pattern
+    // Product name is always the line immediately after "Brand"
+    // Each product: Brand → name → [account ref lines] → Quantity → qty → Bag Size → bagsize → Price → £price → Unit → Per X
+    const firstProductName = lines[brandIdx + 1] || '';
     let i = brandIdx + 1;
     while (i < lines.length) {
-      // Stop at footer
       if (/^\d{2}\s+\w{3}\s+\d{4}/.test(lines[i])) break;
-      if (/^Orders by Crop Advisors/.test(lines[i])) break;
-      if (/^Page \d/.test(lines[i])) break;
+      if (/^(Orders by Crop Advisors|Page \d)/.test(lines[i])) break;
 
-      // Expect: product name, then "Quantity", then "X Tonnes/Litres/Kg"
-      const productName = lines[i];
-      if (i + 1 < lines.length && lines[i + 1] === 'Quantity') {
-        const qtyLine = lines[i + 2] || '';
-        const qtyMatch = qtyLine.match(/^(\d+(?:\.\d+)?)\s+(Tonnes|Litres|Kg)$/i);
-        if (qtyMatch) {
+      if (lines[i] === 'Quantity') {
+        // Use firstProductName for now (single product per order in these PDFs)
+        // For multi-product orders, we'd need to track each Brand occurrence
+        const productName = firstProductName;
+
+        const qtyLine = lines[i + 1] || '';
+        const qtyMatch = qtyLine.match(/^(\d+(?:\.\d+)?)\s+(Tonnes|Litres|Kg|kg)$/i);
+        if (qtyMatch && productName) {
           const qty = parseFloat(qtyMatch[1]);
           const unit = qtyMatch[2];
-          // Skip "Bag Size" label
-          const bagSizeLabel = lines[i + 3] || '';
-          const bagSize = bagSizeLabel === 'Bag Size' ? (lines[i + 4] || '') : bagSizeLabel;
-          const offset = bagSizeLabel === 'Bag Size' ? 5 : 4;
-          // Skip "Price" label
-          const priceLabel = lines[i + offset] || '';
-          const priceStr = priceLabel === 'Price' ? (lines[i + offset + 1] || '') : priceLabel;
-          const price = parseFloat(priceStr.replace(/[£,]/g, ''));
-          // Skip "Unit" label
-          const unitLabel = lines[i + offset + (priceLabel === 'Price' ? 2 : 1)] || '';
-          const perUnitStr = unitLabel === 'Unit'
-            ? (lines[i + offset + (priceLabel === 'Price' ? 3 : 2)] || '')
-            : unitLabel;
-          const perUnit = perUnitStr.replace(/^Per\s+/i, '');
 
-          if (!isNaN(price) && price > 0) {
+          // Bag Size
+          let bagSize = '';
+          let cursor = i + 2;
+          if (lines[cursor] === 'Bag Size') cursor++;
+          bagSize = lines[cursor] || '';
+          cursor++;
+
+          // Price
+          let priceStr = '';
+          if (lines[cursor] === 'Price') cursor++;
+          priceStr = (lines[cursor] || '').replace(/[£,]/g, '');
+          cursor++;
+
+          // Unit / Per X
+          let perUnit = '';
+          if (lines[cursor] === 'Unit') cursor++;
+          perUnit = (lines[cursor] || '').replace(/^Per\s+/i, '');
+
+          const price = parseFloat(priceStr);
+          if (!isNaN(price) && price > 0 && productName) {
             products.push({
               name: productName.trim(),
               quantity: qty,
@@ -133,9 +139,6 @@ function parsePdfText(text: string, filename: string): PurchaseOrder | null {
               totalValue: Math.round(qty * price * 100) / 100,
             });
           }
-          // Advance past this product block (name + Quantity + qty + BagSize + bagsize + Price + price + Unit + perUnit)
-          i += offset + (priceLabel === 'Price' ? 4 : 3);
-          continue;
         }
       }
       i++;
