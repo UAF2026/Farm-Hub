@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse');
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js');
     const parsed = await pdfParse(Buffer.from(bytes));
     const text: string = parsed.text || '';
 
