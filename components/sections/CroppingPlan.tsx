@@ -70,7 +70,6 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   const [season, setSeason] = useState<string>('26/27');
   const [editingParcel, setEditingParcel] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'plan' | 'summary' | 'economics'>('plan');
-  const [showOnlyArable, setShowOnlyArable] = useState(true);
 
   const plans = db.croppingPlans ?? [];
   const seasonPlan = plans.find(p => p.season === season);
@@ -78,12 +77,9 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   // Build the working plan for this season — merge saved plans with field list
   const allFields = useMemo(() => {
     const dbFields = db.fields ?? [];
-    return dbFields.filter(f => {
-      if (!showOnlyArable) return true;
-      // Include arable fields only (exclude permanent grass unless user wants all)
-      return !['Grass', 'Herbal ley'].includes(f.status);
-    });
-  }, [db.fields, showOnlyArable]);
+    // Exclude permanent grass and herbal ley — these won't rotate into arable
+    return dbFields.filter(f => !['Grass', 'Herbal ley'].includes(f.status));
+  }, [db.fields]);
 
   const workingPlans = useMemo((): FieldCropPlan[] => {
     return allFields.map(f => {
@@ -244,10 +240,6 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
             {v === 'plan' ? '📋 Field plan' : v === 'summary' ? '📊 Summary' : '💰 Economics'}
           </button>
         ))}
-        <label style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="checkbox" checked={showOnlyArable} onChange={e => setShowOnlyArable(e.target.checked)} />
-          Arable only
-        </label>
       </div>
 
       {/* ── Field plan view ── */}
