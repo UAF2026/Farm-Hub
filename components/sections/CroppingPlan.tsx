@@ -78,7 +78,10 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   const allFields = useMemo(() => {
     const dbFields = db.fields ?? [];
     // Exclude permanent grass and herbal ley — these won't rotate into arable
-    return dbFields.filter(f => !['Grass', 'Herbal ley'].includes(f.status));
+    return dbFields.filter(f => {
+      const s = (f.status || '').toLowerCase();
+      return !s.includes('grass') && !s.includes('herbal') && !s.includes('ley');
+    });
   }, [db.fields]);
 
   const workingPlans = useMemo((): FieldCropPlan[] => {
