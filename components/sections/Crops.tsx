@@ -216,7 +216,7 @@ export default function Crops({ db, persist, addActivity }: Props) {
                     )}
                   </div>
                   <div className="row-sub">
-                    {f.area.toFixed(1)}ha ({(f.area * 2.471).toFixed(1)}ac) · {f.crop || 'No crop'}
+                    {(f.area || 0).toFixed(1)}ha ({((f.area || 0) * 2.471).toFixed(1)}ac) · {f.crop || 'No crop'}
                     {f.notes ? ' · ' + f.notes : ''}
                   </div>
                   {jd && (

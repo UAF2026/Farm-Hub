@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, CSSProperties } from 'react';
+import { useState, useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import type { FarmData, FieldCropPlan, CroppingPlanSeason, CropType, ContractType } from '@/lib/types';
 
 // ── Crop economics benchmarks ─────────────────────────────────────────────────
@@ -33,6 +34,20 @@ const BENCHMARKS: Record<string, CropBenchmark> = {
 
 const CROP_TYPES: CropType[] = ['Winter wheat', 'Winter barley', 'Spring barley', 'Spring wheat', 'OSR', 'Legume fallow', 'Cover crop', 'Grass', 'Herbal ley', 'Other'];
 const SEASONS = ['25/26', '26/27', '27/28'];
+
+const TH: CSSProperties = {
+  textAlign: 'left',
+  padding: '7px 8px',
+  fontWeight: 600,
+  fontSize: 12,
+  color: 'var(--text-muted)',
+  whiteSpace: 'nowrap',
+};
+
+const TD: CSSProperties = {
+  padding: '6px 8px',
+  verticalAlign: 'middle',
+};
 
 function grossMargin(plan: FieldCropPlan): number {
   if (!plan.plannedCrop || !plan.targetYieldTha || !plan.estimatedPricePerT) return 0;
@@ -72,17 +87,18 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
 
   const workingPlans = useMemo((): FieldCropPlan[] => {
     return allFields.map(f => {
-      const saved = seasonPlan?.plans.find(p => p.fieldParcel === (f.parcel || f.name));
-      const b = saved?.plannedCrop ? BENCHMARKS[saved.plannedCrop] : null;
-      return saved ?? {
-        fieldParcel: f.parcel || f.name,
-        fieldName: f.name,
-        areaHa: f.area,
+      const parcel = f.parcel || f.name || '';
+      const saved = seasonPlan?.plans?.find(p => p.fieldParcel === parcel);
+      if (saved) return { ...saved, areaHa: saved.areaHa || f.area || 0 };
+      return {
+        fieldParcel: parcel,
+        fieldName: f.name || parcel,
+        areaHa: f.area || 0,
         plannedCrop: '' as CropType | '',
         variety: '',
         contractType: 'N/A' as ContractType,
-        targetYieldTha: b?.defaultYield ?? 0,
-        estimatedPricePerT: b?.defaultPrice ?? 0,
+        targetYieldTha: 0,
+        estimatedPricePerT: 0,
         previousCrop: f.crop || '',
         notes: '',
       };
@@ -269,7 +285,7 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{plan.fieldParcel}</div>
                       {warn && <div style={{ fontSize: 11, color: '#c17b00', marginTop: 2 }}>{warn}</div>}
                     </td>
-                    <td style={{ ...TD, textAlign: 'right', fontWeight: 600 }}>{plan.areaHa.toFixed(1)}</td>
+                    <td style={{ ...TD, textAlign: 'right', fontWeight: 600 }}>{(plan.areaHa || 0).toFixed(1)}</td>
                     <td style={{ ...TD, color: 'var(--text-muted)', fontSize: 12 }}>{prevCropDisplay}</td>
 
                     {/* Planned crop */}
@@ -490,17 +506,3 @@ function StatBox({ label, value, highlight }: { label: string; value: string; hi
     </div>
   );
 }
-
-const TH: CSSProperties = {
-  textAlign: 'left',
-  padding: '7px 8px',
-  fontWeight: 600,
-  fontSize: 12,
-  color: 'var(--text-muted)',
-  whiteSpace: 'nowrap',
-};
-
-const TD: CSSProperties = {
-  padding: '6px 8px',
-  verticalAlign: 'middle',
-};
