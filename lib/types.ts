@@ -414,6 +414,31 @@ export interface FarmData {
   farmBible?: FarmBible;
   purchases?: PurchaseOrder[];
   purchasesSyncStatus?: { syncedAt: string; ordersFound: number; };
+  croppingPlans?: CroppingPlanSeason[];
+}
+
+/* ─── Cropping Plans ──────────────────────────────────────────────────────── */
+
+export type CropType = 'Winter wheat' | 'Winter barley' | 'Spring barley' | 'Spring wheat' | 'OSR' | 'Legume fallow' | 'Cover crop' | 'Grass' | 'Herbal ley' | 'Other';
+export type ContractType = 'Milling' | 'Feed' | 'Malting' | 'Wildfarmed' | 'N/A';
+
+export interface FieldCropPlan {
+  fieldParcel: string;
+  fieldName: string;
+  areaHa: number;
+  plannedCrop: CropType | '';
+  variety?: string;
+  contractType?: ContractType;
+  targetYieldTha?: number;
+  estimatedPricePerT?: number;
+  notes?: string;
+  previousCrop?: string;    // auto-populated from prior season
+}
+
+export interface CroppingPlanSeason {
+  season: string;           // e.g. '26/27', '27/28'
+  plans: FieldCropPlan[];
+  lastUpdated?: string;
 }
 
 /* ─── Crop Advisors Purchases ─────────────────────────────────────────────── */
