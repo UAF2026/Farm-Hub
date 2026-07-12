@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, CSSProperties } from 'react';
 import type { FarmData, FieldCropPlan, CroppingPlanSeason, CropType, ContractType } from '@/lib/types';
 
 // ── Crop economics benchmarks ─────────────────────────────────────────────────
@@ -491,7 +491,7 @@ function StatBox({ label, value, highlight }: { label: string; value: string; hi
   );
 }
 
-const TH: React.CSSProperties = {
+const TH: CSSProperties = {
   textAlign: 'left',
   padding: '7px 8px',
   fontWeight: 600,
@@ -500,7 +500,7 @@ const TH: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const TD: React.CSSProperties = {
+const TD: CSSProperties = {
   padding: '6px 8px',
   verticalAlign: 'middle',
 };
