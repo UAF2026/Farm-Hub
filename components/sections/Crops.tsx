@@ -5,6 +5,7 @@ import { FarmData } from '@/lib/types';
 import type { Field } from '@/lib/types';
 import { fmtDate, uid } from '@/lib/utils';
 import { buildJdSummaries } from '@/lib/jdSummaries';
+import { GATEKEEPER_FIELDS } from '@/lib/gatekeeperData';
 
 function fmtShortDate(iso?: string): string {
   if (!iso) return '';
@@ -156,6 +157,12 @@ export default function Crops({ db, persist, addActivity }: Props) {
     persist({ ...db, fields: all });
   }
 
+  function loadGatekeeper() {
+    if (!confirm('This will replace your current field list with the Gatekeeper field names and areas from the May 2026 Cropping Summary. RPA parcel data will be removed. Continue?')) return;
+    addActivity(`Loaded ${GATEKEEPER_FIELDS.length} fields from Gatekeeper`);
+    persist({ ...db, fields: GATEKEEPER_FIELDS });
+  }
+
   function getStatusColor(s: string): string {
     if (s === 'In crop') return 'bg-green';
     if (s === 'Grass') return 'bg-blue';
@@ -167,7 +174,8 @@ export default function Crops({ db, persist, addActivity }: Props) {
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
         <button className="btn-add" onClick={() => { setEditIdx(null); setModal(true); }}>+ Add field</button>
-        <button className="btn-primary" onClick={loadRPA}>Load RPA agreement fields</button>
+        <button className="btn-primary" onClick={loadGatekeeper}>🌾 Load Gatekeeper fields</button>
+        <button className="btn-primary" onClick={loadRPA}>Load RPA fields</button>
         <button className="btn-primary" onClick={loadBixHall}>Load Bix Hall fields</button>
       </div>
 

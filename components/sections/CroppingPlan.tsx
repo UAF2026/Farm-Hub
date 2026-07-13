@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { FarmData, FieldCropPlan, CroppingPlanSeason, CropType, ContractType } from '@/lib/types';
+import { GK_PLAN_2526, GK_PLAN_2627 } from '@/lib/gatekeeperData';
 
 // ── Crop economics benchmarks ─────────────────────────────────────────────────
 // Variable costs (seed + fert + spray + contract) in £/ha
@@ -77,12 +78,18 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   // Build the working plan for this season — merge saved plans with field list
   const allFields = useMemo(() => {
     const dbFields = db.fields ?? [];
-    // Exclude permanent grass and herbal ley — these won't rotate into arable
+    // Build set of parcels that have a plan entry for this season
+    // so that ley fields coming back into arable still appear
+    const plannedParcels = new Set(seasonPlan?.plans?.map(p => p.fieldParcel) ?? []);
     return dbFields.filter(f => {
       const s = (f.status || '').toLowerCase();
-      return !s.includes('grass') && !s.includes('herbal') && !s.includes('ley');
+      const isGrass = s.includes('grass') || s.includes('herbal') || s.includes('ley');
+      if (!isGrass) return true;
+      // Include grass/ley fields if they have a plan entry for this season
+      const parcel = f.parcel || f.name || '';
+      return plannedParcels.has(parcel);
     });
-  }, [db.fields]);
+  }, [db.fields, seasonPlan]);
 
   const workingPlans = useMemo((): FieldCropPlan[] => {
     return allFields.map(f => {
@@ -107,6 +114,13 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   // Get previous season plan for rotation logic
   const prevSeasonLabel = season === '26/27' ? '25/26' : season === '27/28' ? '26/27' : '';
   const prevPlan = plans.find(p => p.season === prevSeasonLabel);
+
+  function loadGatekeeperPlans() {
+    const gk2526: CroppingPlanSeason = { season: '25/26', plans: GK_PLAN_2526, lastUpdated: new Date().toISOString() };
+    const gk2627: CroppingPlanSeason = { season: '26/27', plans: GK_PLAN_2627, lastUpdated: new Date().toISOString() };
+    const existing = (db.croppingPlans ?? []).filter(p => p.season !== '25/26' && p.season !== '26/27');
+    persist({ ...db, croppingPlans: [...existing, gk2526, gk2627] });
+  }
 
   function savePlan(updated: FieldCropPlan[]) {
     const newSeasonPlan: CroppingPlanSeason = {
@@ -178,6 +192,14 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
             {fmt(plannedHa, 1)} of {fmt(totalHa, 1)} ha planned · Est. GM £{fmt(totalGM)}
           </div>
         </div>
+        {/* Load from Gatekeeper */}
+        <button
+          onClick={loadGatekeeperPlans}
+          style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: '1px solid var(--green)', background: 'transparent', color: 'var(--green)', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          title="Load 25/26 and 26/27 plans from Gatekeeper Cropping Summary (May 2026)"
+        >
+          ↓ Load from Gatekeeper
+        </button>
         {/* Season selector */}
         <div style={{ display: 'flex', gap: 4 }}>
           {SEASONS.map(s => (
