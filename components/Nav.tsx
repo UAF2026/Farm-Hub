@@ -26,6 +26,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'fieldrecords', label: '📋 Field Records' },
   { id: 'purchases', label: '🛒 Purchases' },
   { id: 'croppingplan', label: '🌾 Cropping Plan' },
+  { id: 'costings', label: '💰 Costings' },
   { id: 'assistant', label: 'AI' },
   { id: 'settings', label: 'Settings' },
 ];
