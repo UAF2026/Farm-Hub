@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { FarmData, FieldOperation } from '@/lib/types';
+import { uid, fmtDate as fmtFullDate } from '@/lib/utils';
 
 // Web Speech API types (not in default TS lib)
 type SpeechRecognitionAlternative = { transcript: string; confidence: number };
@@ -60,7 +62,23 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export default function BrainDump() {
+interface ParsedOp {
+  field: string;
+  matchedField: boolean;
+  operation: string;
+  crop: string;
+  variety: string;
+  rate: string;
+  date: string;
+}
+
+interface Props {
+  db?: FarmData;
+  persist?: (db: FarmData) => void;
+  addActivity?: (msg: string) => void;
+}
+
+export default function BrainDump({ db, persist, addActivity }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -69,6 +87,8 @@ export default function BrainDump() {
   const [filter, setFilter] = useState<'open' | 'actioned' | 'all'>('open');
   const [listening, setListening] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [parsing, setParsing] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, ParsedOp>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
@@ -121,6 +141,105 @@ export default function BrainDump() {
       body: JSON.stringify({ id }),
     });
     setEntries(prev => prev.filter(e => e.id !== id));
+  }
+
+  // ── Parse a Brain Dump entry into a structured farm operation ───────────
+  // Uses the same client-side Anthropic call pattern as the invoice scanner
+  // in Finance.tsx. Never writes anything until the user confirms the draft.
+  function currentSeasonFieldNames(): string[] {
+    const seasons = db?.croppingPlans ?? [];
+    if (!seasons.length) return [];
+    const season = seasons.find(s => s.season === '26/27') ?? seasons[seasons.length - 1];
+    return (season.plans ?? []).map(p => p.fieldName);
+  }
+
+  async function parseEntry(entry: Entry) {
+    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('uaf_anthropic_key') : null;
+    if (!apiKey) { alert('Please set your Anthropic API key in Settings first'); return; }
+    setParsing(entry.id);
+    try {
+      const fieldNames = currentSeasonFieldNames();
+      const today = new Date().toISOString().slice(0, 10);
+      const prompt = `You are extracting a structured farm job record from a short note a farmer dictated. Note: "${entry.content}"\n\nKnown field names on this farm (match against these if possible, case-insensitively, allow for spelling/hearing variation): ${fieldNames.length ? fieldNames.join(', ') : '(no field list available)'}\n\nToday's date is ${today} if the note doesn't state one.\n\nReturn ONLY JSON, no other text, in this exact shape:\n{"field": "best matching field name from the list, or the raw name mentioned if no good match", "matchedField": true/false, "operation": "short verb phrase e.g. Drilled / Sprayed / Fertilised / Rolled / Harvested", "crop": "", "variety": "", "rate": "e.g. 180 kg/ha, blank if not mentioned", "date": "YYYY-MM-DD"}`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!response.ok) { alert('Parse failed: ' + (await response.text())); return; }
+      const result = await response.json();
+      const raw = result.content?.[0]?.text ?? '{}';
+      const match = raw.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : raw);
+      setDrafts(prev => ({
+        ...prev,
+        [entry.id]: {
+          field: parsed.field || '',
+          matchedField: !!parsed.matchedField,
+          operation: parsed.operation || '',
+          crop: parsed.crop || '',
+          variety: parsed.variety || '',
+          rate: parsed.rate || '',
+          date: parsed.date || today,
+        },
+      }));
+    } catch {
+      alert('Could not parse that entry. You can still log it manually via Field Records.');
+    } finally {
+      setParsing(null);
+    }
+  }
+
+  function updateDraft(id: string, field: keyof ParsedOp, value: string | boolean) {
+    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } as ParsedOp }));
+  }
+
+  function discardDraft(id: string) {
+    setDrafts(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }
+
+  function applyDraft(entry: Entry) {
+    const draft = drafts[entry.id];
+    if (!draft || !db || !persist) return;
+
+    const op: FieldOperation = {
+      id: uid(),
+      date: draft.date,
+      field: draft.field,
+      operation: draft.operation,
+      crop: draft.crop || undefined,
+      variety: draft.variety || undefined,
+      rate: draft.rate || undefined,
+      notes: entry.content,
+      matchedField: draft.matchedField,
+      source: `brain_dump:${entry.id}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingOps = db.fieldOperations ?? [];
+    let newDb: FarmData = { ...db, fieldOperations: [op, ...existingOps] };
+
+    // If matched to a field in the current cropping plan, append a note there too —
+    // never silently overwrite the planned crop, just leave a trail.
+    if (draft.matchedField && db.croppingPlans?.length) {
+      const seasons = db.croppingPlans;
+      const seasonIdx = seasons.findIndex(s => s.season === '26/27');
+      const idx = seasonIdx >= 0 ? seasonIdx : seasons.length - 1;
+      const season = seasons[idx];
+      const plans = (season.plans ?? []).map(p => {
+        if (p.fieldName !== draft.field) return p;
+        const opNote = `${draft.operation}${draft.crop ? ' ' + draft.crop : ''}${draft.variety ? ' (' + draft.variety + ')' : ''}${draft.rate ? ' @ ' + draft.rate : ''} on ${fmtFullDate(draft.date)} — logged via Brain Dump.`;
+        return { ...p, notes: p.notes ? `${p.notes}\n${opNote}` : opNote };
+      });
+      const newSeasons = seasons.map((s, i) => i === idx ? { ...season, plans, lastUpdated: new Date().toISOString() } : s);
+      newDb = { ...newDb, croppingPlans: newSeasons };
+    }
+
+    persist(newDb);
+    addActivity?.(`Logged farm job: ${draft.operation} on ${draft.field}${draft.rate ? ' @ ' + draft.rate : ''}`);
+    updateEntry(entry.id, { status: 'actioned', notes: `Applied to farm ops log: ${draft.operation} on ${draft.field}` });
+    discardDraft(entry.id);
   }
 
   function toggleVoice() {
@@ -360,6 +479,15 @@ export default function BrainDump() {
 
                     {/* Action buttons */}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {entry.status === 'open' && db && persist && !drafts[entry.id] && (
+                        <button
+                          onClick={() => parseEntry(entry)}
+                          disabled={parsing === entry.id}
+                          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #2980b9', background: '#eaf3fb', color: '#2980b9', fontSize: 12, cursor: 'pointer' }}
+                        >
+                          {parsing === entry.id ? 'Reading…' : '🔍 Parse as farm job'}
+                        </button>
+                      )}
                       {entry.status === 'open' && (
                         <button
                           onClick={() => { updateEntry(entry.id, { status: 'actioned' }); setExpandedId(null); }}
@@ -383,6 +511,43 @@ export default function BrainDump() {
                         🗑 Delete
                       </button>
                     </div>
+
+                    {/* Parsed farm job draft — nothing is saved until Apply is pressed */}
+                    {drafts[entry.id] && (
+                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#f6fbff', border: '1px solid #cfe4f5' }}>
+                        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#2980b9' }}>
+                          Check this before applying{drafts[entry.id].matchedField ? '' : ' — field name not matched to your cropping plan, edit it below'}:
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+                          <label style={{ fontSize: 11, color: '#666' }}>Field
+                            <input value={drafts[entry.id].field} onChange={e => updateDraft(entry.id, 'field', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                          <label style={{ fontSize: 11, color: '#666' }}>Operation
+                            <input value={drafts[entry.id].operation} onChange={e => updateDraft(entry.id, 'operation', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                          <label style={{ fontSize: 11, color: '#666' }}>Crop
+                            <input value={drafts[entry.id].crop} onChange={e => updateDraft(entry.id, 'crop', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                          <label style={{ fontSize: 11, color: '#666' }}>Variety
+                            <input value={drafts[entry.id].variety} onChange={e => updateDraft(entry.id, 'variety', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                          <label style={{ fontSize: 11, color: '#666' }}>Rate
+                            <input value={drafts[entry.id].rate} onChange={e => updateDraft(entry.id, 'rate', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                          <label style={{ fontSize: 11, color: '#666' }}>Date
+                            <input type="date" value={drafts[entry.id].date} onChange={e => updateDraft(entry.id, 'date', e.target.value)} style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 5, border: '1px solid #ccc' }} />
+                          </label>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => applyDraft(entry)} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#2980b9', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                            ✓ Apply to farm records
+                          </button>
+                          <button onClick={() => discardDraft(entry.id)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', color: '#555', fontSize: 12, cursor: 'pointer' }}>
+                            Discard
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

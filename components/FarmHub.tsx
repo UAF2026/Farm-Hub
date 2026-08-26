@@ -300,7 +300,7 @@ export default function FarmHub() {
         {section === 'satellite' && <SatelliteNDVI db={db} />}
         {section === 'farms' && <Farms />}
         {section === 'links' && <Links />}
-        {section === 'braindump' && <BrainDump />}
+        {section === 'braindump' && <BrainDump db={db} persist={persist} addActivity={addActivity} />}
         {section === 'farmbible' && <FarmBible db={db} persist={persist} />}
         {section === 'fieldrecords' && <FieldRecords db={db} persist={persist} />}
         {section === 'purchases' && <Purchases db={db} persist={persist} />}

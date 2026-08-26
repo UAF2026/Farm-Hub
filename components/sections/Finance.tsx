@@ -198,11 +198,20 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   }
 
   function markPaid(id: string | undefined, idx: number) {
+    const paidDate = new Date().toISOString().slice(0, 10);
+    let paidRecord: Finance | undefined;
     const updated = finance.map((f, i) => {
-      if (id ? f.id === id : i === idx) return { ...f, status: 'Paid' };
+      if (id ? f.id === id : i === idx) {
+        paidRecord = { ...f, status: 'Paid', paidDate };
+        return paidRecord;
+      }
       return f;
     });
     persist({ ...db, finance: updated });
+    if (paidRecord) {
+      const label = paidRecord.type === 'Invoice' ? 'Invoice' : 'Bill';
+      addActivity(`${label} ${paidRecord.ref || paidRecord.supplier} marked paid ${fmtDate(paidDate)} — ${fmtMoney(paidRecord.gross || paidRecord.amount || 0)}`);
+    }
   }
 
   // ── Import from briefing ─────────────────────────────────────────────────
@@ -626,6 +635,7 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
                           <span>{fmtDate(f.date)}</span>
                           {f.ref && <span>· {f.ref}</span>}
                           <span className={`badge ${f.status === 'Outstanding' ? 'bg-amber' : 'bg-green'}`} style={{ fontSize: 10 }}>{f.status}</span>
+                          {f.status === 'Paid' && f.paidDate && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>on {fmtDate(f.paidDate)}</span>}
                           <span className="badge bg-blue" style={{ fontSize: 10 }}>{f.category}</span>
                           {f.type === 'Invoice' && <span className="badge" style={{ background: 'var(--green-bg, #dcfce7)', color: 'var(--green, #166534)', fontSize: 10 }}>Receivable</span>}
                         </div>

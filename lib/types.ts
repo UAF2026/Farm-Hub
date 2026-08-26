@@ -47,6 +47,7 @@ export interface Finance {
   ref: string;
   amount: number;
   briefingDate?: string;  // set when auto-created from daily briefing
+  paidDate?: string;      // ISO date the payment actually landed — set via "Mark as paid"
 }
 
 export interface Scheme {
@@ -268,6 +269,21 @@ export interface GrainMarketPrice {
   source?: string;
 }
 
+/* ─── Field Operations (drilling/spraying/etc jobs logged via Brain Dump) ── */
+export interface FieldOperation {
+  id: string;
+  date: string;          // ISO date the job was done, best guess if not stated
+  field: string;         // matched fieldName from the current croppingPlans season, or raw text if unmatched
+  operation: string;     // e.g. "Drilled", "Sprayed", "Fertilised", "Harvested", "Rolled"
+  crop?: string;
+  variety?: string;
+  rate?: string;         // e.g. "180 kg/ha", free text since units vary
+  notes?: string;
+  matchedField: boolean; // true if `field` was matched against the cropping plan, false if left as raw text
+  source: string;        // 'brain_dump:<entry id>'
+  createdAt: string;     // ISO timestamp logged
+}
+
 /* ─── JD Field → Hub Field lookup table ────────────────────────────────── */
 export interface JdFieldMapEntry {
   jdName: string;       // exact string from JdOperation.fieldName
@@ -415,6 +431,7 @@ export interface FarmData {
   purchases?: PurchaseOrder[];
   purchasesSyncStatus?: { syncedAt: string; ordersFound: number; };
   croppingPlans?: CroppingPlanSeason[];
+  fieldOperations?: FieldOperation[];
 }
 
 /* ─── Cropping Plans ──────────────────────────────────────────────────────── */
