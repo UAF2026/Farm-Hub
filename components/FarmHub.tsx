@@ -27,6 +27,7 @@ import Agronomy from './sections/Agronomy';
 import GrainTrading from './sections/GrainTrading';
 import SatelliteNDVI from './sections/SatelliteNDVI';
 import BrainDump from './sections/BrainDump';
+import Diary from './sections/Diary';
 import FarmBible from './sections/FarmBible';
 import FieldRecords from './sections/FieldRecords';
 import Purchases from './sections/Purchases';
@@ -133,7 +134,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -301,6 +302,7 @@ export default function FarmHub() {
         {section === 'farms' && <Farms />}
         {section === 'links' && <Links />}
         {section === 'braindump' && <BrainDump db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'diary' && <Diary db={db} persist={persist} addActivity={addActivity} />}
         {section === 'farmbible' && <FarmBible db={db} persist={persist} />}
         {section === 'fieldrecords' && <FieldRecords db={db} persist={persist} />}
         {section === 'purchases' && <Purchases db={db} persist={persist} />}

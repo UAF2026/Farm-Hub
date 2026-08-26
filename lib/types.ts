@@ -284,6 +284,13 @@ export interface FieldOperation {
   createdAt: string;     // ISO timestamp logged
 }
 
+/* ─── Diary (per-day free-text notes, shown alongside an auto rollup) ──── */
+export interface DiaryEntry {
+  date: string;   // YYYY-MM-DD, one entry per day
+  note: string;
+  updatedAt: string; // ISO timestamp of last edit
+}
+
 /* ─── JD Field → Hub Field lookup table ────────────────────────────────── */
 export interface JdFieldMapEntry {
   jdName: string;       // exact string from JdOperation.fieldName
@@ -432,6 +439,7 @@ export interface FarmData {
   purchasesSyncStatus?: { syncedAt: string; ordersFound: number; };
   croppingPlans?: CroppingPlanSeason[];
   fieldOperations?: FieldOperation[];
+  diary?: DiaryEntry[];
 }
 
 /* ─── Cropping Plans ──────────────────────────────────────────────────────── */
