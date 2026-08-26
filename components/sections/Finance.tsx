@@ -963,6 +963,7 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
 
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
               The invoice will open for printing / saving as PDF. It will also be recorded in the Finance ledger automatically.
+              In the print dialog, untick "Headers and footers" (under More settings) so the browser doesn't stamp its own URL and date onto the page.
               {!(db.invoiceSettings?.bankName) && <span style={{ color: 'var(--amber, #d97706)' }}> ⚠ Add your bank details in Settings so they print on the invoice.</span>}
             </p>
 
