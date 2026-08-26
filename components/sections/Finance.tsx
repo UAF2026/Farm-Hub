@@ -64,6 +64,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const [invLines, setInvLines] = useState<InvoiceLine[]>([
     { id: uid(), description: '', qty: '1', unitPrice: '', vatRate: '20%' }
   ]);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   const finance = db.finance || [];
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -288,6 +289,26 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     setCustName(''); setCustAddress(''); setCustEmail('');
     setInvDate(new Date().toISOString().slice(0, 10)); setInvDue(''); setInvNotes('');
     setInvLines([{ id: uid(), description: '', qty: '1', unitPrice: '', vatRate: '20%' }]);
+    setEditingInvoiceId(null);
+  }
+
+  // Reopen a previously-generated invoice for editing and reprinting. Older
+  // invoices created before lineItems were stored fall back to a single
+  // reconstructed line so the form still has something sensible to edit.
+  function openEditInvoice(f: Finance) {
+    setCustName(f.supplier || '');
+    setCustAddress(f.customerAddress || '');
+    setCustEmail(f.customerEmail || '');
+    setInvDate(f.date || new Date().toISOString().slice(0, 10));
+    setInvDue(f.due || '');
+    setInvNotes(f.invoiceNotes || '');
+    setInvLines(
+      f.lineItems && f.lineItems.length
+        ? f.lineItems.map(l => ({ ...l }))
+        : [{ id: uid(), description: f.desc || '', qty: '1', unitPrice: String(f.net || f.amount || 0), vatRate: f.vatRate && f.vatRate !== 'Mixed' ? f.vatRate : '20%' }]
+    );
+    setEditingInvoiceId(f.id || null);
+    setCreateModal(true);
   }
 
   function generateAndDownloadInvoice() {
@@ -295,8 +316,9 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     if (invLines.every(l => !l.description.trim())) return alert('Add at least one line item with a description');
 
     const settings = db.invoiceSettings ?? DEFAULT_INV_SETTINGS;
+    const existingRecord = editingInvoiceId ? finance.find(f => f.id === editingInvoiceId) : undefined;
     const num = settings.nextInvoiceNumber ?? 1;
-    const invoiceRef = `${settings.invoicePrefix}-${String(num).padStart(3, '0')}`;
+    const invoiceRef = existingRecord?.ref || `${settings.invoicePrefix}-${String(num).padStart(3, '0')}`;
     const today = new Date().toISOString().slice(0, 10);
 
     // Build HTML invoice
@@ -411,14 +433,15 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
     w.focus();
     setTimeout(() => { w.print(); }, 400);
 
-    // Record in Finance ledger as outstanding receivable
+    // Record in Finance ledger — new receivable, or the same record updated in place if editing.
     const ledgerItem: Finance = {
-      id: uid(),
+      ...(existingRecord ?? {}),
+      id: existingRecord?.id ?? uid(),
       type: 'Invoice',
-      status: 'Outstanding',
+      status: existingRecord?.status ?? 'Outstanding',
       supplier: custName.trim(),
       desc: invLines.filter(l => l.description.trim()).map(l => l.description).join(', '),
-      category: 'Other',
+      category: existingRecord?.category ?? 'Other',
       date: invDate,
       net: totNet,
       vat: totVat,
@@ -427,10 +450,20 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
       due: invDue,
       ref: invoiceRef,
       amount: totGross,
+      customerAddress: custAddress,
+      customerEmail: custEmail,
+      invoiceNotes: invNotes,
+      lineItems: invLines.filter(l => l.description.trim()).map(l => ({ ...l })),
     };
-    const updatedSettings = { ...(db.invoiceSettings ?? DEFAULT_INV_SETTINGS), nextInvoiceNumber: num + 1 };
-    addActivity(`Created invoice ${invoiceRef} for ${custName} — ${fmtMoney(totGross)}`);
-    persist({ ...db, finance: [...finance, ledgerItem], invoiceSettings: updatedSettings });
+
+    if (existingRecord) {
+      addActivity(`Edited & reprinted invoice ${invoiceRef} for ${custName} — ${fmtMoney(totGross)}`);
+      persist({ ...db, finance: finance.map(f => (f.id === existingRecord.id ? ledgerItem : f)) });
+    } else {
+      const updatedSettings = { ...(db.invoiceSettings ?? DEFAULT_INV_SETTINGS), nextInvoiceNumber: num + 1 };
+      addActivity(`Created invoice ${invoiceRef} for ${custName} — ${fmtMoney(totGross)}`);
+      persist({ ...db, finance: [...finance, ledgerItem], invoiceSettings: updatedSettings });
+    }
 
     setCreateModal(false);
     resetCreateForm();
@@ -642,6 +675,11 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginLeft: 8, flexShrink: 0 }}>
                         {f.status === 'Outstanding' && <button className="done-btn" onClick={() => markPaid(f.id, idx)}>Paid</button>}
+                        {f.type === 'Invoice' && (
+                          <button className="btn-primary" onClick={() => openEditInvoice(f)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }} title="Edit line items and reprint">
+                            ✏️ Edit &amp; reprint
+                          </button>
+                        )}
                         <button className="btn-primary" onClick={() => openEdit(f, idx)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }}>Edit</button>
                         <button className="del-btn" onClick={() => deleteFinance(f.id, idx)}>×</button>
                       </div>
@@ -834,7 +872,7 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
       {createModal && (
         <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && setCreateModal(false)}>
           <div className="modal-box" style={{ maxWidth: 680 }}>
-            <div className="modal-title">Create invoice</div>
+            <div className="modal-title">{editingInvoiceId ? `Edit invoice ${finance.find(f => f.id === editingInvoiceId)?.ref || ''}` : 'Create invoice'}</div>
 
             {/* Customer details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
@@ -930,9 +968,9 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
 
             <div className="modal-btns">
               <button className="btn-primary" onClick={generateAndDownloadInvoice} style={{ background: 'var(--green, #166534)', color: '#fff' }}>
-                Generate &amp; download invoice
+                {editingInvoiceId ? 'Save changes & reprint' : 'Generate & download invoice'}
               </button>
-              <button className="btn-cancel" onClick={() => setCreateModal(false)}>Cancel</button>
+              <button className="btn-cancel" onClick={() => { setCreateModal(false); resetCreateForm(); }}>Cancel</button>
             </div>
           </div>
         </div>

@@ -48,6 +48,12 @@ export interface Finance {
   amount: number;
   briefingDate?: string;  // set when auto-created from daily briefing
   paidDate?: string;      // ISO date the payment actually landed — set via "Mark as paid"
+  // Populated only for customer invoices generated via "Create invoice" in Finance.tsx,
+  // so a previously-generated invoice can be reopened, edited, and reprinted later.
+  customerAddress?: string;
+  customerEmail?: string;
+  invoiceNotes?: string;
+  lineItems?: { id: string; description: string; qty: string; unitPrice: string; vatRate: string }[];
 }
 
 export interface Scheme {
