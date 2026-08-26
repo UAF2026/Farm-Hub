@@ -553,6 +553,11 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
               </div>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginLeft: 8, flexShrink: 0 }}>
                 <button className="done-btn" onClick={() => markPaid(f.id, idx)}>Paid</button>
+                {f.type === 'Invoice' && (
+                  <button className="btn-primary" onClick={() => openEditInvoice(f)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }} title="Edit line items and reprint">
+                    ✏️ Edit &amp; reprint
+                  </button>
+                )}
                 <button className="btn-primary" onClick={() => openEdit(f, idx)} style={{ fontSize: 11, padding: '0.25rem 0.5rem' }}>Edit</button>
                 <button className="del-btn" onClick={() => deleteFinance(f.id, idx)}>×</button>
               </div>
