@@ -382,7 +382,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
     <div class="big">${invoiceRef}</div>
     <p style="margin:8px 0 2px;"><strong>Date:</strong> ${fmtDate(invDate)}</p>
     ${invDue ? `<p style="margin:2px 0;"><strong>Due:</strong> ${fmtDate(invDue)}</p>` : ''}
-    <p style="margin:2px 0;color:#888;font-size:12px;">${settings.paymentTerms}</p>
+    ${settings.paymentTerms ? `<p style="margin:2px 0;color:#888;font-size:12px;">${settings.paymentTerms}</p>` : ''}
   </div>
 </div>
 

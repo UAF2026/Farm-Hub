@@ -24,6 +24,10 @@ const DEFAULT_CERTS = [
 ];
 
 const BEEF_CHECKLIST: { section: string; item: string }[] = [
+  { section: 'Documents and Procedures', item: 'Farm map showing buildings, fields, watercourses, boreholes/wells within 50m' },
+  { section: 'Documents and Procedures', item: 'Written contingency/emergency plan (fire, power cut, flood, disease outbreak) with contacts' },
+  { section: 'Documents and Procedures', item: 'Complaints/sample-result recording and investigation system' },
+  { section: 'Documents and Procedures', item: 'Written Health & Safety Policy, communicated to all workers' },
   { section: 'Animal Welfare', item: 'Animals inspected daily and records maintained' },
   { section: 'Animal Welfare', item: 'Five Freedoms policy in place and understood by staff' },
   { section: 'Animal Welfare', item: 'Veterinary Health Plan (VHP) in place and reviewed annually' },
@@ -50,12 +54,22 @@ const BEEF_CHECKLIST: { section: string; item: string }[] = [
   { section: 'Biosecurity', item: 'Biosecurity plan documented' },
   { section: 'Biosecurity', item: 'Visitor records maintained' },
   { section: 'Biosecurity', item: 'Isolation facilities available for new/returning animals' },
+  { section: 'Biosecurity', item: 'TB: current restriction status, testing history and reactor records available' },
+  { section: 'Biosecurity', item: 'Vermin control: annual site survey (bait points, findings, actions) kept' },
+  { section: 'Medicine & Vet', item: 'Annual antibiotic usage collated and submitted (AHDB Medicine Hub or equivalent)' },
+  { section: 'Medicine & Vet', item: 'Broken needle policy documented' },
+  { section: 'Fallen Stock', item: 'Licensed fallen stock collector contract (e.g. NFSCo) held; carcasses stored vermin-proof pending collection' },
+  { section: 'Housing & Facilities', item: 'Handling facilities (crush/restraining gates) structurally sound, no sharp edges' },
 ];
 
 const ARABLE_CHECKLIST: { section: string; item: string }[] = [
+  { section: 'Documents and Procedures', item: 'Farm map showing buildings, fields, watercourses, boreholes/wells within 50m' },
+  { section: 'Documents and Procedures', item: 'Written contingency/emergency plan (fire, power cut, flood, pollution incident) with contacts' },
+  { section: 'Documents and Procedures', item: 'Complaints/sample-result recording and investigation system' },
   { section: 'Pesticide Safety', item: 'BASIS-qualified person available for spray advice' },
   { section: 'Pesticide Safety', item: 'All spray operators hold valid PA1 and appropriate certificate' },
   { section: 'Pesticide Safety', item: 'Spray equipment tested and calibrated (within 3 years)' },
+  { section: 'Pesticide Safety', item: 'NSTS test certificates held per sprayer, at correct interval for boom width' },
   { section: 'Pesticide Safety', item: 'Pesticide store locked, ventilated, bunded' },
   { section: 'Pesticide Safety', item: 'COSHH assessments available for all products used' },
   { section: 'Pesticide Safety', item: 'Personal protective equipment (PPE) available and maintained' },
@@ -69,10 +83,14 @@ const ARABLE_CHECKLIST: { section: string; item: string }[] = [
   { section: 'Fertiliser', item: 'Fertiliser records kept for all applications' },
   { section: 'Fertiliser', item: 'Closed periods for manure/slurry spreading observed' },
   { section: 'Fertiliser', item: 'Organic manure applications recorded with source and analysis' },
+  { section: 'Fertiliser', item: 'Urea fertiliser application timing/rules complied with (if urea products used)' },
   { section: 'Environment', item: 'Watercourse buffer zones observed (6m uncropped)' },
   { section: 'Environment', item: 'SSSI obligations (if applicable) being met' },
   { section: 'Environment', item: 'Burning restrictions complied with' },
   { section: 'Environment', item: 'Hedgerow management compliant with regulations' },
+  { section: 'Environment', item: 'Vermin control: annual site survey (bait points, findings, actions) kept' },
+  { section: 'Environment', item: 'Manure Management Plan and slurry/manure storage capacity calculation documented' },
+  { section: 'Environment', item: 'Waste carrier registration held; waste transfer notes kept for disposed waste' },
   { section: 'Traceability', item: 'Field records identify variety, seed lot and provenance' },
   { section: 'Traceability', item: 'Grain store records (in/out) maintained' },
   { section: 'Traceability', item: 'Grain sales documents retained' },
