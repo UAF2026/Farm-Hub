@@ -449,6 +449,7 @@ export interface FarmData {
   fieldOperations?: FieldOperation[];
   diary?: DiaryEntry[];
   stockProducts?: StockProduct[];
+  grainQualityTests?: GrainQualityTest[];
 }
 
 /* ─── Live Chemical/Fertiliser Inventory ────────────────────────────────────
@@ -601,6 +602,32 @@ export interface SoilTestResult {
   vrNRate?: number;
   vrPRate?: number;
   vrKRate?: number;
+}
+
+/* ─── Grain Quality Samples (lab reports: Heygates, buyer intake, etc.) ── */
+export interface GrainQualityTest {
+  id: string;
+  sampleRef?: string;
+  dateTested: string;
+  dateReported?: string;
+  variety?: string;
+  lab?: string;
+  location?: string;       // bin/bay/field description as given by the lab
+  comments?: string;
+  hagberg?: number;
+  moisture?: number;       // MC %
+  protein?: number;        // Pro %
+  screenings?: number;     // Scr %
+  specificWeight?: number;
+  texture?: number;        // TXT
+  gluten?: string;
+  ergot?: number;
+  don?: number;            // Deoxynivalenol
+  zon?: number;            // Zearalenone
+  foreignObjects?: string;
+  discolouredGrains?: string;
+  source?: string;         // e.g. 'Heygates On-Farm Sample Report'
+  notes?: string;
 }
 
 /* ─── Plant Health / Sap Tests (NutriScope) ────────────────────────────── */

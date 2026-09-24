@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { FarmData, GrainContract, GrainContractStatus, GrainContractType, GrainCropYear, GrainMarketPrice, GrainPosition } from '@/lib/types';
+import { FarmData, GrainContract, GrainContractStatus, GrainContractType, GrainCropYear, GrainMarketPrice, GrainPosition, GrainQualityTest } from '@/lib/types';
 import { uid } from '@/lib/utils';
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
@@ -296,6 +296,92 @@ function ContractModal({ cropYear, existing, onSave, onClose }: ContractModalPro
   );
 }
 
+// ── Modal: add/edit grain quality sample ───────────────────────────────────────
+interface QualityModalProps {
+  existing?: GrainQualityTest;
+  onSave: (t: GrainQualityTest) => void;
+  onClose: () => void;
+}
+function QualityModal({ existing, onSave, onClose }: QualityModalProps) {
+  const [dateTested, setDateTested] = useState(existing?.dateTested ?? '');
+  const [variety, setVariety] = useState(existing?.variety ?? '');
+  const [location, setLocation] = useState(existing?.location ?? '');
+  const [lab, setLab] = useState(existing?.lab ?? '');
+  const [moisture, setMoisture] = useState(String(existing?.moisture ?? ''));
+  const [protein, setProtein] = useState(String(existing?.protein ?? ''));
+  const [hagberg, setHagberg] = useState(String(existing?.hagberg ?? ''));
+  const [screenings, setScreenings] = useState(String(existing?.screenings ?? ''));
+  const [specificWeight, setSpecificWeight] = useState(String(existing?.specificWeight ?? ''));
+  const [don, setDon] = useState(String(existing?.don ?? ''));
+  const [zon, setZon] = useState(String(existing?.zon ?? ''));
+  const [source, setSource] = useState(existing?.source ?? '');
+  const [notes, setNotes] = useState(existing?.notes ?? '');
+
+  function save() {
+    if (!dateTested) return;
+    onSave({
+      id: existing?.id ?? uid(),
+      sampleRef: existing?.sampleRef,
+      dateTested,
+      variety: variety || undefined,
+      location: location || undefined,
+      lab: lab || undefined,
+      moisture: moisture ? parseFloat(moisture) : undefined,
+      protein: protein ? parseFloat(protein) : undefined,
+      hagberg: hagberg ? parseFloat(hagberg) : undefined,
+      screenings: screenings ? parseFloat(screenings) : undefined,
+      specificWeight: specificWeight ? parseFloat(specificWeight) : undefined,
+      don: don ? parseFloat(don) : undefined,
+      zon: zon ? parseFloat(zon) : undefined,
+      source: source || undefined,
+      notes: notes || undefined,
+    });
+  }
+
+  const inp: React.CSSProperties = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13 };
+  const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--color-muted)', marginBottom: 3 };
+  const row: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--color-card)', borderRadius: 12, padding: 24, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>{existing ? 'Edit' : 'Add'} Grain Quality Sample</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={row}>
+            <div><div style={lbl}>Date tested</div><input type="date" value={dateTested} onChange={e => setDateTested(e.target.value)} style={inp} /></div>
+            <div><div style={lbl}>Variety</div><input value={variety} onChange={e => setVariety(e.target.value)} style={inp} placeholder="e.g. Skyfall" /></div>
+          </div>
+          <div style={row}>
+            <div><div style={lbl}>Location / bay</div><input value={location} onChange={e => setLocation(e.target.value)} style={inp} placeholder="e.g. Stonor LHS" /></div>
+            <div><div style={lbl}>Lab</div><input value={lab} onChange={e => setLab(e.target.value)} style={inp} placeholder="e.g. Bugbrooke" /></div>
+          </div>
+          <div style={row}>
+            <div><div style={lbl}>Moisture %</div><input type="number" step="0.1" value={moisture} onChange={e => setMoisture(e.target.value)} style={inp} /></div>
+            <div><div style={lbl}>Protein %</div><input type="number" step="0.1" value={protein} onChange={e => setProtein(e.target.value)} style={inp} /></div>
+          </div>
+          <div style={row}>
+            <div><div style={lbl}>Hagberg</div><input type="number" value={hagberg} onChange={e => setHagberg(e.target.value)} style={inp} /></div>
+            <div><div style={lbl}>Screenings %</div><input type="number" step="0.1" value={screenings} onChange={e => setScreenings(e.target.value)} style={inp} /></div>
+          </div>
+          <div style={row}>
+            <div><div style={lbl}>Specific weight</div><input type="number" step="0.1" value={specificWeight} onChange={e => setSpecificWeight(e.target.value)} style={inp} /></div>
+            <div><div style={lbl}>Source</div><input value={source} onChange={e => setSource(e.target.value)} style={inp} placeholder="e.g. Heygates On-Farm Sample Report" /></div>
+          </div>
+          <div style={row}>
+            <div><div style={lbl}>DON</div><input type="number" step="0.1" value={don} onChange={e => setDon(e.target.value)} style={inp} /></div>
+            <div><div style={lbl}>ZON</div><input type="number" step="0.1" value={zon} onChange={e => setZon(e.target.value)} style={inp} /></div>
+          </div>
+          <div><div style={lbl}>Notes</div><textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inp, height: 60, resize: 'vertical' }} /></div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={save}>Save sample</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GrainTrading({ db, persist, addActivity }: Props) {
   const grainData = db.grainTrading ?? { positions: [SEED_POSITION] };
@@ -306,6 +392,28 @@ export default function GrainTrading({ db, persist, addActivity }: Props) {
   const [newEstimate, setNewEstimate] = useState('');
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [priceEdits, setPriceEdits] = useState<GrainMarketPrice[]>([]);
+  const [qualityModal, setQualityModal] = useState<'add' | 'edit' | null>(null);
+  const [editingQuality, setEditingQuality] = useState<GrainQualityTest | undefined>();
+
+  const qualityTests = db.grainQualityTests ?? [];
+  const sortedQualityTests = useMemo(
+    () => [...qualityTests].sort((a, b) => (b.dateTested || '').localeCompare(a.dateTested || '')),
+    [qualityTests]
+  );
+
+  function saveQualityTest(t: GrainQualityTest) {
+    const exists = qualityTests.some(x => x.id === t.id);
+    const updated = exists ? qualityTests.map(x => x.id === t.id ? t : x) : [...qualityTests, t];
+    persist({ ...db, grainQualityTests: updated });
+    addActivity(exists ? `Grain quality sample updated: ${t.variety ?? ''} ${t.location ?? ''}`.trim() : `Grain quality sample logged: ${t.variety ?? ''} ${t.location ?? ''}`.trim());
+    setQualityModal(null);
+    setEditingQuality(undefined);
+  }
+
+  function deleteQualityTest(id: string) {
+    if (!confirm('Remove this quality sample?')) return;
+    persist({ ...db, grainQualityTests: qualityTests.filter(t => t.id !== id) });
+  }
 
   const market: GrainMarketPrice[] = grainData.marketPrices?.length ? grainData.marketPrices : FALLBACK_FUTURES;
   const lastFetch = grainData.lastMarketFetch;
@@ -511,6 +619,61 @@ export default function GrainTrading({ db, persist, addActivity }: Props) {
           </div>
         )}
       </div>
+
+      {/* Grain quality samples */}
+      <div style={{ ...cardStyle, marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Grain Quality Samples</div>
+          <button className="btn-primary" style={{ fontSize: 12 }} onClick={() => { setEditingQuality(undefined); setQualityModal('add'); }}>+ Add sample</button>
+        </div>
+        {sortedQualityTests.length === 0 ? (
+          <div style={{ color: 'var(--color-muted)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>
+            No quality samples logged yet. Add lab results (moisture, protein, Hagberg, DON/ZON, etc.) as they come in.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  {['Date', 'Variety', 'Location', 'MC%', 'Pro%', 'Hagberg', 'Scr%', 'Spec Wt', 'DON', 'ZON', ''].map(h => (
+                    <th key={h} style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--color-muted)', fontWeight: 500, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedQualityTests.map(t => (
+                  <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>{t.dateTested ? new Date(t.dateTested).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</td>
+                    <td style={{ padding: '8px', fontWeight: 500 }}>{t.variety || '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.location || '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.moisture ?? '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.protein ?? '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.hagberg ?? '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.screenings ?? '—'}</td>
+                    <td style={{ padding: '8px' }}>{t.specificWeight ?? '—'}</td>
+                    <td style={{ padding: '8px', color: (t.don ?? 0) > 0 ? 'var(--color-warning)' : 'var(--color-text)' }}>{t.don ?? '—'}</td>
+                    <td style={{ padding: '8px', color: (t.zon ?? 0) > 0 ? 'var(--color-warning)' : 'var(--color-text)' }}>{t.zon ?? '—'}</td>
+                    <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>
+                      <button className="btn-secondary" style={{ fontSize: 11, padding: '3px 8px', marginRight: 4 }}
+                        onClick={() => { setEditingQuality(t); setQualityModal('edit'); }}>Edit</button>
+                      <button className="btn-secondary" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--color-danger)' }}
+                        onClick={() => deleteQualityTest(t.id)}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {qualityModal && (
+        <QualityModal
+          existing={qualityModal === 'edit' ? editingQuality : undefined}
+          onSave={saveQualityTest}
+          onClose={() => { setQualityModal(null); setEditingQuality(undefined); }}
+        />
+      )}
 
       {/* Contract modal */}
       {modal && (
