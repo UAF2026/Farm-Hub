@@ -448,6 +448,24 @@ export interface FarmData {
   croppingPlans?: CroppingPlanSeason[];
   fieldOperations?: FieldOperation[];
   diary?: DiaryEntry[];
+  stockProducts?: StockProduct[];
+}
+
+/* ─── Live Chemical/Fertiliser Inventory ────────────────────────────────────
+   Opening stock is set once (manually). From then on it looks after itself:
+   + purchases (from Purchases, matched by name/alias)
+   − actual usage (from sprays[] / fertilisers[], matched by name/alias)
+   = live running balance. No manual updates needed after setup. */
+
+export interface StockProduct {
+  id: string;
+  name: string;                 // canonical display name
+  category: 'Chemical' | 'Fertiliser';
+  unit: string;                 // 'L' | 'kg' | 'g' | 't' — the unit openingStock is recorded in
+  openingStock: number;
+  openingDate: string;          // ISO date the opening count was taken
+  aliases: string[];            // other spellings/names seen in purchases or spray/fert records
+  notes?: string;
 }
 
 /* ─── Cropping Plans ──────────────────────────────────────────────────────── */
