@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Upper Assendon Farm — Aerial Site Map (Red Tractor Reference)</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 20px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin: 0 0 2px 0; }
+  h2 { font-size: 13px; margin: 0 0 14px 0; color: #555; font-weight: normal; }
+  .wrap { display: flex; gap: 20px; align-items: flex-start; }
+  .mapbox { flex: 0 0 620px; border: 2px solid #333; }
+  .mapbox img { width: 100%; display: block; }
+  .side { flex: 1; }
+  .box { border: 1px solid #ccc; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+  .box h3 { margin: 0 0 6px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #333; }
+  .ok { border-left: 5px solid #2e7d32; }
+  .todo { border-left: 5px solid #c62828; background: #fff8f7; }
+  ul { margin: 4px 0 0 18px; padding: 0; font-size: 12.5px; line-height: 1.5; }
+  .footer { margin-top: 16px; font-size: 10.5px; color: #777; }
+  .pin-legend { font-size: 11px; color: #444; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h1>Upper Assendon Farm — Aerial Site Reference</h1>
+  <h2>M J Hunt &amp; Son · Stonor, Henley-on-Thames, Oxfordshire RG9 6HE · Red Tractor inspection 1 Oct 2026</h2>
+  <div class="wrap">
+    <div class="mapbox">
+      <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-0.948442,51.588600,-0.933986,51.595786&bboxSR=4326&size=1200,900&imageSR=4326&format=jpg&f=image" alt="Aerial view of Upper Assendon Farm, Stonor, Oxfordshire">
+      <div class="pin-legend">Real satellite imagery (Esri World Imagery) centred on RG9 6HE. North is up. Approx. 800m x 600m ground coverage.</div>
+    </div>
+    <div class="side">
+      <div class="box ok">
+        <h3>Confirmed for the inspection</h3>
+        <ul>
+          <li>No watercourses, ditches, ponds or boreholes/wells within 50m of the farmyard or fields (checked against Environment Agency mapping).</li>
+          <li>Farm confirmed NON-NVZ (Environment Agency map, Stonor area).</li>
+          <li>Coxlease Farm, Shenley Wood Farm and the Bix Hall FBT ground are all part of the Upper Assendon Farm holding / single RT-SAI Global membership — not separate holdings, so all in scope for this inspection together.</li>
+        </ul>
+      </div>
+      <div class="box todo">
+        <h3>Before you print &amp; laminate this for the entrance/office</h3>
+        <ul>
+          <li>Circle/label on this image: main farmyard entrance, chemical &amp; fertiliser store, fuel tank, grain store, cattle housing/handling, muck heap location(s).</li>
+          <li>Mark the CPH number sign location if it isn't already clearly displayed at the entrance.</li>
+          <li>If any outlying block (Shenley Wood Farm, Coxlease) has its own separate access/yard, a second small inset for each is worth adding by hand — this image only covers the home yard at Stonor.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    Generated from Esri World Imagery (aerial photography) centred on the farm's registered postcode. This is a real aerial photograph, not a drawn sketch — pair it with the Rural Payments Online / BPS field map if the inspector wants parcel-level boundaries too. Building-by-building labels above need a quick pass from James since satellite imagery alone doesn't identify what each shed is used for.
+  </div>
+</body>
+</html>
