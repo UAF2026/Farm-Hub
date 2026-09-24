@@ -172,6 +172,7 @@ export interface Certificate {
   issuedBy: string;
   category: string;
   notes: string;
+  documentUrl?: string;
 }
 
 export interface ChecklistItem {
@@ -181,6 +182,7 @@ export interface ChecklistItem {
   status: 'Yes' | 'No' | 'N/A' | 'Action required';
   notes: string;
   lastChecked: string;
+  documentUrl?: string;
 }
 
 /* ─── John Deere Operations Center ─────────────────────────────────────── */

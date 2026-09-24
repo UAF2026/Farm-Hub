@@ -812,6 +812,25 @@ export default function Compliance({ db, persist, addActivity }: Props) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    {c.documentUrl && (
+                      <a
+                        href={c.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '0.2rem 0.5rem',
+                          fontSize: 11,
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap',
+                          background: 'var(--green-pale)',
+                          color: 'var(--green)',
+                          border: '1px solid var(--green)',
+                          borderRadius: 'var(--radius)'
+                        }}
+                      >
+                        📄 View
+                      </a>
+                    )}
                     <span className={`badge ${statusColor[certStatus(c.expiryDate)]}`} style={{ fontSize: 10 }}>
                       {statusLabel[certStatus(c.expiryDate)]}
                     </span>
@@ -865,6 +884,26 @@ export default function Compliance({ db, persist, addActivity }: Props) {
                     <div key={item.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, fontSize: 13, paddingTop: 2 }}>{item.item}</div>
+                        {item.documentUrl && (
+                          <a
+                            href={item.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary"
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              fontSize: 12,
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              background: 'var(--green-pale)',
+                              color: 'var(--green)',
+                              border: '1px solid var(--green)',
+                              borderRadius: 'var(--radius)'
+                            }}
+                          >
+                            📄 View document
+                          </a>
+                        )}
                         <select
                           value={item.status}
                           onChange={e => updateChecklistItem(item.id, 'status', e.target.value)}
