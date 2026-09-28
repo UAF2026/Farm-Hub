@@ -706,9 +706,17 @@ export default function Compliance({ db, persist, addActivity }: Props) {
                   <div style={{ flex: 1 }}>
                     <div className="row-name">{s.product} — {s.field}</div>
                     <div className="row-sub">
-                      {fmtDate(s.date)} · {s.purpose} · {s.dose}{s.doseUnit} · {s.area}ha
+                      {fmtDate(s.date)} · {s.purpose} · {s.dose ? `${s.dose}${s.doseUnit}` : '— rate not synced'} · {s.area ? `${s.area}ha` : '— area not synced'}
                       {s.operator ? ` · Op: ${s.operator}` : ''}
                       {s.basisCertRef ? ` · BASIS: ${s.basisCertRef}` : ''}
+                    </div>
+                    <div className="row-sub" style={{ color: 'var(--text-muted)' }}>
+                      {s.windSpeed ? `Wind: ${s.windSpeed}` : 'Wind: —'}
+                      {' · '}{s.temperature ? `Temp: ${s.temperature}` : 'Temp: —'}
+                      {s.waterVolume ? ` · Water: ${s.waterVolume}L/ha` : ''}
+                      {s.batch ? ` · Batch: ${s.batch}` : ''}
+                      {s.harvestInterval ? ` · HI: ${s.harvestInterval}d` : ''}
+                      {s.reEntryInterval ? ` · REI: ${s.reEntryInterval}hrs` : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
