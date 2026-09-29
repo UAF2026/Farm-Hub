@@ -18,6 +18,7 @@ const TABS: { id: Section; label: string }[] = [
   { id: 'machinery', label: 'Machinery' },
   { id: 'utilities', label: 'Contracts' },
   { id: 'compliance', label: 'Compliance' },
+  { id: 'assurance', label: '✅ Assurance' },
   { id: 'farms', label: 'Farms' },
   { id: 'johndeere', label: 'JD Ops' },
   { id: 'links', label: 'Links' },

@@ -19,6 +19,7 @@ import Medicine from './sections/Medicine';
 import Machinery from './sections/Machinery';
 import Utilities from './sections/Utilities';
 import Compliance from './sections/Compliance';
+import Assurance from './sections/Assurance';
 import FieldMap from './sections/FieldMap';
 import Settings from './sections/Settings';
 import JohnDeere from './sections/JohnDeere';
@@ -134,7 +135,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -313,6 +314,7 @@ export default function FarmHub() {
         {section === 'machinery' && <Machinery db={db} persist={persist} addActivity={addActivity} />}
         {section === 'utilities' && <Utilities db={db} persist={persist} addActivity={addActivity} />}
         {section === 'compliance' && <Compliance db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'assurance' && <Assurance db={db} />}
         {section === 'johndeere' && <JohnDeere db={db} persist={persist} />}
         {section === 'settings' && (
           <Settings
