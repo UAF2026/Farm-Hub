@@ -34,6 +34,7 @@ const DOCUMENTS: { name: string; file: string; keywords?: string }[] = [
   { name: 'Chemical Store Inventory and Fertiliser Stock List', file: 'chemical-store-inventory-and-fertiliser-stock-list.pdf' },
   { name: 'Soil Management Plan (SFI SAM1)', file: 'uaf-soil-management-plan-2026.pdf', keywords: 'compaction organic matter erosion vsa ctf subsoiling nutrient' },
   { name: 'Herd Health Plan', file: 'uaf-herd-health-plan-july-2026.pdf', keywords: 'bvd tb ibr lepto johnes vhp adelle jenkins' },
+  { name: 'Herd Health Plan — Signed Original (Adelle Jenkins MRCVS)', file: 'herd-health-plan-signed.pdf', keywords: 'bvd tb ibr lepto johnes vhp adelle jenkins vet signed copper toxicity reactors calving' },
   { name: 'Hedgerow Management Plan', file: 'uaf-hedgerow-management-plan-2026.pdf', keywords: 'be3 cutting' },
 ];
 
