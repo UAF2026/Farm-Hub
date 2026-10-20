@@ -450,6 +450,7 @@ export interface FarmData {
   diary?: DiaryEntry[];
   stockProducts?: StockProduct[];
   grainQualityTests?: GrainQualityTest[];
+  initiatives?: Initiative[];
 }
 
 /* ─── Live Chemical/Fertiliser Inventory ────────────────────────────────────
@@ -670,6 +671,26 @@ export interface SapTest {
   recommendation?: string;
   source?: string;
   contractContext?: string;   // e.g. 'Wildfarmed'
+}
+
+/* ─── Strategy / Initiatives (the "brains of the business" tracker) ─────────
+   For in-flight strategic work that isn't yet a signed Agreement (Farm Bible)
+   and isn't a single-day Task — the multi-step things with a next action and
+   real money or security at stake: scheme transitions, tenancy proposals,
+   enterprise direction, succession. Agreements (signed, dated) and Decisions
+   (recorded with hindsight) already live in farmBible; Initiatives is the
+   "what's still moving, what do I do next" layer above both. */
+export interface Initiative {
+  id: string;
+  title: string;
+  area: 'Scheme income' | 'Land & tenancy' | 'Enterprise' | 'Succession' | 'Other';
+  status: 'Active' | 'Waiting' | 'Blocked' | 'Done';
+  targetDate?: string;            // ISO date — next milestone or deadline, if known
+  annualValueAtStake?: number;    // £/yr this protects or could create, if known
+  nextAction: string;             // the single next concrete step
+  owner?: string;                 // James / Savills / Natural England / Harry etc.
+  notes: string;                  // running context and rationale
+  updatedAt: string;              // ISO timestamp of last edit
 }
 
 export const emptyDb: FarmData = {

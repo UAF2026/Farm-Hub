@@ -4,9 +4,9 @@ import { FarmData, DailyBriefing } from '@/lib/types';
 import type { Task } from '@/lib/types';
 import { fmtDate, fmtMoney } from '@/lib/utils';
 
-interface Props { db: FarmData; persist: (db: FarmData) => void; }
+interface Props { db: FarmData; persist: (db: FarmData) => void; onNavigate?: (s: 'strategy' | 'farmbible') => void; }
 
-export default function Dashboard({ db, persist }: Props) {
+export default function Dashboard({ db, persist, onNavigate }: Props) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const in1 = new Date(today); in1.setDate(today.getDate() + 1);
   const in30 = new Date(today); in30.setDate(today.getDate() + 30);
@@ -61,6 +61,14 @@ export default function Dashboard({ db, persist }: Props) {
     return new Date(u.renewalDate + 'T12:00:00') <= in60;
   });
 
+  // Agreements (Farm Bible) expiring within 60 days — tenancies, licences, scheme agreements.
+  // These carry real money and land, so they belong on the first screen, not three taps deep.
+  const in60Agreements = (db.farmBible?.agreements || []).filter(a => {
+    if (!a.endDate) return false;
+    const d = new Date(a.endDate + 'T12:00:00');
+    return d <= in60;
+  }).sort((a, b) => (a.endDate || '').localeCompare(b.endDate || ''));
+
   /* ─── Briefing panel ─────────────────────────────────────────────────── */
   const briefing = db.dailyBriefing;
   const briefingIsToday = briefing?.date === new Date().toISOString().slice(0, 10);
@@ -69,7 +77,7 @@ export default function Dashboard({ db, persist }: Props) {
     <>
       {/* Daily Briefing */}
       {briefing ? (
-        <div className="card" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', marginBottom: '0.5rem' }}>
+        <div className="card" style={{ borderLeft: '4px solid var(--green)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', marginBottom: '0.5rem' }}>
 
           {/* Header row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -89,7 +97,7 @@ export default function Dashboard({ db, persist }: Props) {
                 </span>
               )}
               {briefing.invoices.length > 0 && (
-                <span className="badge" style={{ background: 'var(--primary)', color: '#fff', fontSize: 11 }}>
+                <span className="badge" style={{ background: 'var(--green)', color: '#fff', fontSize: 11 }}>
                   ✓ {briefing.invoices.length} invoice{briefing.invoices.length !== 1 ? 's' : ''} added → Finance
                 </span>
               )}
@@ -99,7 +107,7 @@ export default function Dashboard({ db, persist }: Props) {
           {/* Calendar events */}
           {briefing.calendarEvents.length > 0 && (
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--primary)', marginBottom: 3 }}>📅 Calendar</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--green)', marginBottom: 3 }}>📅 Calendar</div>
               {briefing.calendarEvents.map((ev, i) => (
                 <div key={i} style={{ fontSize: 13, padding: '2px 0', color: 'var(--text)' }}>{ev}</div>
               ))}
@@ -160,9 +168,21 @@ export default function Dashboard({ db, persist }: Props) {
 
       <div className="card" style={{ borderLeft: '4px solid var(--red)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0' }}>
         <div className="card-title" style={{ color: 'var(--red)' }}>Needs attention today</div>
-        {urgentTasks.length === 0 && withdrawalAlerts.length === 0 && machineOverdue.length === 0 && utilityDue.length === 0
+        {urgentTasks.length === 0 && withdrawalAlerts.length === 0 && machineOverdue.length === 0 && utilityDue.length === 0 && in60Agreements.length === 0
           ? <div className="empty">Nothing urgent today.</div>
           : <>
+            {in60Agreements.map(a => {
+              const days = Math.round((new Date(a.endDate + 'T12:00:00').getTime() - today.getTime()) / 86400000);
+              return (
+                <div key={a.id} className="row-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="row-name">📋 {days < 0 ? 'Expired' : 'Ends soon'}: {a.name}</div>
+                    <div className="row-sub">{a.counterparty}{a.annualValue ? ` · £${Math.abs(a.annualValue).toLocaleString()}/yr` : ''} · {fmtDate(a.endDate || '')}</div>
+                  </div>
+                  <span className={`badge ${days < 30 ? 'bg-red' : 'bg-amber'}`}>{days < 0 ? `${Math.abs(days)}d overdue` : `${days}d left`}</span>
+                </div>
+              );
+            })}
             {urgentTasks.map(t => (
               <div key={t.id} className="row-item">
                 <div style={{ flex: 1 }}>
@@ -206,6 +226,30 @@ export default function Dashboard({ db, persist }: Props) {
           </>
         }
       </div>
+
+      {(() => {
+        const initiatives = db.initiatives || [];
+        const activeInitiatives = initiatives.filter(i => i.status === 'Active' || i.status === 'Blocked');
+        const schemeAtRisk = (db.farmBible?.agreements || []).filter(a => {
+          if (a.type !== 'Scheme' || !a.endDate) return false;
+          const days = Math.round((new Date(a.endDate + 'T12:00:00').getTime() - today.getTime()) / 86400000);
+          return days >= 0 && days < 365;
+        }).reduce((s, a) => s + (a.annualValue || 0), 0);
+        if (activeInitiatives.length === 0 && schemeAtRisk === 0) return null;
+        return (
+          <div className="card" style={{ borderLeft: '4px solid var(--green)', cursor: onNavigate ? 'pointer' : 'default' }} onClick={() => onNavigate && onNavigate('strategy')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-title" style={{ margin: 0 }}>🧭 Strategy</div>
+              {onNavigate && <span style={{ fontSize: 12, color: 'var(--green)' }}>Open →</span>}
+            </div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              {activeInitiatives.length > 0 && <span>{activeInitiatives.length} active initiative{activeInitiatives.length !== 1 ? 's' : ''} in flight</span>}
+              {activeInitiatives.length > 0 && schemeAtRisk > 0 && <span> · </span>}
+              {schemeAtRisk > 0 && <span style={{ color: '#c17b00' }}>£{schemeAtRisk.toLocaleString()}/yr scheme income ends within 12 months</span>}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid2">
         <div className="card">

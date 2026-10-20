@@ -34,6 +34,7 @@ import FieldRecords from './sections/FieldRecords';
 import Purchases from './sections/Purchases';
 import CroppingPlan from './sections/CroppingPlan';
 import Costings from './sections/Costings';
+import Strategy from './sections/Strategy';
 
 const LS_KEY = 'uaf_v4';
 const LS_CFG = 'uaf_supa_v1';
@@ -135,7 +136,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'dashboard' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -289,7 +290,8 @@ export default function FarmHub() {
       <Header syncStatus={syncStatus} syncLabel={syncLabel} />
       <Nav section={section} onSection={setSection} />
       <div className="main">
-        {section === 'dashboard' && <Dashboard db={db} persist={persist} />}
+        {section === 'dashboard' && <Dashboard db={db} persist={persist} onNavigate={setSection} />}
+        {section === 'strategy' && <Strategy db={db} persist={persist} onNavigate={setSection} />}
         {section === 'tasks' && <Tasks db={db} persist={persist} addActivity={addActivity} />}
         {section === 'livestock' && <Livestock db={db} persist={persist} addActivity={addActivity} />}
         {section === 'map' && <FieldMap db={db} persist={persist} addActivity={addActivity} />}
