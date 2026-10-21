@@ -5,7 +5,7 @@ import { FarmData, emptyDb, CloudConfig, DailyBriefing, Task, Finance as Finance
 import { fetchFarmData, saveFarmData } from '@/lib/supabase';
 import { uid } from '@/lib/utils';
 import Header from './Header';
-import Nav from './Nav';
+import Nav, { ALL_SECTIONS, groupOf } from './Nav';
 import Dashboard from './sections/Dashboard';
 import Tasks from './sections/Tasks';
 import Livestock from './sections/Livestock';
@@ -142,7 +142,31 @@ export type Section = 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' 
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
-  const [section, setSection] = useState<Section>('dashboard');
+  const [section, setSectionState] = useState<Section>('dashboard');
+  const [lastInGroup, setLastInGroup] = useState<Record<string, Section>>({});
+
+  // The open tab lives in the address (#fields, #finance…) so refresh and the
+  // phone's back button keep your place.
+  const setSection = useCallback((s: Section) => {
+    setSectionState(s);
+    const g = groupOf(s);
+    if (g) setLastInGroup(prev => ({ ...prev, [g.id]: s }));
+    if (typeof window !== 'undefined' && window.location.hash !== `#${s}`) window.history.pushState(null, '', `#${s}`);
+    window.scrollTo({ top: 0 });
+  }, []);
+  useEffect(() => {
+    const fromHash = () => {
+      const h = window.location.hash.slice(1) as Section;
+      if (ALL_SECTIONS.includes(h)) {
+        setSectionState(h);
+        const g = groupOf(h);
+        if (g) setLastInGroup(prev => ({ ...prev, [g.id]: h }));
+      } else if (!h) setSectionState('dashboard');
+    };
+    fromHash();
+    window.addEventListener('popstate', fromHash);
+    return () => window.removeEventListener('popstate', fromHash);
+  }, []);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('');
   const [syncLabel, setSyncLabel] = useState('Local');
   const [cfg, setCfg] = useState<CloudConfig | null>(null);
@@ -289,8 +313,8 @@ export default function FarmHub() {
           onLocalOnly={() => { setShowSetup(false); setSyncLabel('Local only'); }}
         />
       )}
-      <Header syncStatus={syncStatus} syncLabel={syncLabel} />
-      <Nav section={section} onSection={setSection} />
+      <Header syncStatus={syncStatus} syncLabel={syncLabel} onSettings={() => setSection('settings')} settingsOpen={section === 'settings'} />
+      <Nav section={section} onSection={setSection} lastInGroup={lastInGroup} />
       <div className="main">
         {section === 'dashboard' && <Dashboard db={db} persist={persist} onNavigate={setSection} />}
         {section === 'weather' && <Weather />}

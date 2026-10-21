@@ -2,48 +2,99 @@
 
 import { Section } from './FarmHub';
 
-const TABS: { id: Section; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'weather', label: '🌦 Weather' },
-  { id: 'strategy', label: '🧭 Strategy' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'livestock', label: 'Livestock' },
-  { id: 'fields', label: '🗂 Fields' },
-  { id: 'map', label: 'Map' },
-  { id: 'crops', label: 'Crops' },
-  { id: 'soilhealth', label: 'Soil' },
-  { id: 'agronomy', label: 'Agronomy' },
-  { id: 'finance', label: 'Finance' },
-  { id: 'schemes', label: 'Schemes' },
-  { id: 'graintrading', label: 'Grain' },
-  { id: 'satellite', label: 'Satellite' },
-  { id: 'medicine', label: 'Medicine' },
-  { id: 'machinery', label: 'Machinery' },
-  { id: 'utilities', label: 'Contracts' },
-  { id: 'compliance', label: 'Compliance' },
-  { id: 'assurance', label: '✅ Assurance' },
-  { id: 'farms', label: 'Farms' },
-  { id: 'johndeere', label: 'JD Ops' },
-  { id: 'links', label: 'Links' },
-  { id: 'braindump', label: '🧠 Dump' },
-  { id: 'diary', label: '📔 Diary' },
-  { id: 'farmbible', label: '📚 Bible' },
-  { id: 'fieldrecords', label: '📋 Field Records' },
-  { id: 'purchases', label: '🛒 Purchases' },
-  { id: 'croppingplan', label: '🌾 Cropping Plan' },
-  { id: 'costings', label: '💰 Costings' },
-  { id: 'assistant', label: 'AI' },
-  { id: 'settings', label: 'Settings' },
+// Tabs are grouped so the top bar shows six sections instead of 30 tabs.
+// The second row shows the tabs inside the open section.
+export const GROUPS: { id: string; label: string; tabs: { id: Section; label: string }[] }[] = [
+  {
+    id: 'today', label: 'Today', tabs: [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'weather', label: 'Weather' },
+      { id: 'tasks', label: 'Tasks' },
+      { id: 'diary', label: 'Diary' },
+      { id: 'braindump', label: 'Brain Dump' },
+      { id: 'assistant', label: 'Ask AI' },
+    ],
+  },
+  {
+    id: 'fields', label: 'Fields & crops', tabs: [
+      { id: 'fields', label: 'Fields' },
+      { id: 'croppingplan', label: 'Cropping Plan' },
+      { id: 'map', label: 'Map' },
+      { id: 'agronomy', label: 'Agronomy recs' },
+      { id: 'fieldrecords', label: 'Spray & fert records' },
+      { id: 'johndeere', label: 'John Deere' },
+      { id: 'soilhealth', label: 'Soil' },
+      { id: 'satellite', label: 'Satellite' },
+      { id: 'crops', label: 'Old field list' },
+    ],
+  },
+  {
+    id: 'livestock', label: 'Livestock', tabs: [
+      { id: 'livestock', label: 'Cattle' },
+      { id: 'medicine', label: 'Medicine' },
+    ],
+  },
+  {
+    id: 'money', label: 'Money', tabs: [
+      { id: 'finance', label: 'Finance' },
+      { id: 'costings', label: 'Costings' },
+      { id: 'graintrading', label: 'Grain sales' },
+      { id: 'purchases', label: 'Purchases' },
+      { id: 'schemes', label: 'Schemes' },
+    ],
+  },
+  {
+    id: 'compliance', label: 'Compliance', tabs: [
+      { id: 'compliance', label: 'Compliance' },
+      { id: 'assurance', label: 'Audit day' },
+    ],
+  },
+  {
+    id: 'business', label: 'The business', tabs: [
+      { id: 'strategy', label: 'Strategy' },
+      { id: 'farmbible', label: 'Farm Bible' },
+      { id: 'farms', label: 'Land' },
+      { id: 'utilities', label: 'Contracts' },
+      { id: 'machinery', label: 'Machinery' },
+      { id: 'links', label: 'Links' },
+    ],
+  },
 ];
 
-export default function Nav({ section, onSection }: { section: Section; onSection: (s: Section) => void }) {
+export const ALL_SECTIONS: Section[] = [...GROUPS.flatMap(g => g.tabs.map(t => t.id)), 'settings'];
+
+export function groupOf(section: Section) {
+  return GROUPS.find(g => g.tabs.some(t => t.id === section));
+}
+
+export default function Nav({ section, onSection, lastInGroup }: {
+  section: Section;
+  onSection: (s: Section) => void;
+  lastInGroup: Record<string, Section>;
+}) {
+  const group = groupOf(section);
   return (
-    <div className="nav">
-      {TABS.map(tab => (
-        <button key={tab.id} className={`nav-btn${section === tab.id ? ' active' : ''}`} onClick={() => onSection(tab.id)}>
-          {tab.label}
-        </button>
-      ))}
-    </div>
+    <nav aria-label="Sections">
+      <div className="nav nav-groups">
+        {GROUPS.map(g => (
+          <button
+            key={g.id}
+            className={`nav-group${group?.id === g.id ? ' active' : ''}`}
+            onClick={() => onSection(lastInGroup[g.id] || g.tabs[0].id)}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+      {group && group.tabs.length > 1 && (
+        <div className="nav">
+          {group.tabs.map(tab => (
+            <button key={tab.id} className={`nav-btn${section === tab.id ? ' active' : ''}`} onClick={() => onSection(tab.id)}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </nav>
   );
 }

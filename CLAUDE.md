@@ -49,6 +49,7 @@ Judge every feature against these. The aim is to be well ahead of other farms in
   - `/api/data`: lets outside tools (scheduled tasks) read the blob, merge keys into it, or append a record to one list. Protected by `API_SECRET` (the `x-api-secret` header).
 
 ## Gotchas learned the hard way
+- **Until 21 Oct 2026, Vercel's `SUPABASE_SERVICE_KEY` held a public key, not the secret one.** Server routes only worked because the anon key can write to every table. It now holds the `sb_secret_…` key. If a server route ever gets "violates row-level security policy", check this env var first.
 - **A browser tab with old data can undo edits made straight in Supabase.** When the Hub saves, it merges its whole local copy over the stored blob, key by key, and the local copy wins (except `jdAuth`, `jdOperations`, `jdSyncStatus`, and a newer `dailyBriefing`, which the server keeps). So if you patch the blob directly, tell James to reload the Hub on every device before editing anything there.
 - **The cropping plan UI (`CroppingPlan.tsx`) reads `data.croppingPlans`** (an array of `{season, plans, lastUpdated}`), matched by `season`. Seasons currently in the data: `25/26`, `26/27`, `27/28`. It does **not** read `data.cropping`, which is legacy (it's still in the blob). Edits to the wrong key are invisible in the app.
 - **Compliance templates:** `BEEF_CHECKLIST` / `ARABLE_CHECKLIST` in `components/sections/Compliance.tsx`. When adding checklist items, update the template as well as the live data, or a reload brings the old version back.
@@ -59,9 +60,14 @@ Judge every feature against these. The aim is to be well ahead of other farms in
 - The satellite NDVI sync is parked for the off-season. Don't spend time on it until the autumn crops are established.
 
 ## App sections (as built)
-The tab bar, in order (`components/Nav.tsx`):
+The menu has six sections (`GROUPS` in `components/Nav.tsx`); each one's tabs show on a second row. Settings is the gear in the header. The open tab is kept in the address (`#fields`, `#finance`…), so refresh and Back keep your place.
 
-Dashboard (with 7-day forecast) · Weather (forecast, rain and warmth vs the 20-year average, soil temperature) · Strategy (initiatives, farm bible goals) · Tasks · Livestock (cattle, imported from a CTS CSV) · Fields (master field list; each field's crop history, John Deere drilling/harvest jobs and yields) · Map (RPA parcels) · Crops · Soil (soil and sap tests) · Agronomy (agronomist visit recommendations) · Finance (VAT, invoice scanning) · Schemes (CS and SFI) · Grain (grain marketing and quality tests) · Satellite (NDVI) · Medicine · Machinery · Contracts (file `Utilities.tsx`: contracts, utilities, memberships) · Compliance (checklist, certificates, spray/fertiliser records, readiness %) · Assurance (audit-day list of documents, certs and checklist) · Farms (land block cards) · JD Ops (John Deere sync and field matching) · Links · Brain Dump · Diary · Bible (Farm Bible reference) · Field Records (spray/fertiliser records from John Deere with assurance red-flag checks) · Purchases (Crop Advisors orders and chemical/fertiliser stock) · Cropping Plan · Costings (gross margins, incl. Wildfarmed comparison) · AI (chat assistant) · Settings.
+- **Today:** Dashboard (briefing, 7-day forecast, alerts) · Weather · Tasks · Diary · Brain Dump · Ask AI
+- **Fields & crops:** Fields (master field list, history, yields) · Cropping Plan · Map (RPA parcels) · Agronomy recs (Luke's Gatekeeper recommendations) · Spray & fert records (`FieldRecords.tsx`, from John Deere, with assurance checks) · John Deere (`JohnDeere.tsx`, sync and field matching) · Soil (soil and sap tests) · Satellite (NDVI) · Old field list (`Crops.tsx`, the legacy `data.fields`)
+- **Livestock:** Cattle (`Livestock.tsx`, imported from a CTS CSV) · Medicine
+- **Money:** Finance (VAT, invoice scanning) · Costings (gross margins, incl. Wildfarmed comparison) · Grain sales (`GrainTrading.tsx`) · Purchases (Crop Advisors orders and stock) · Schemes (CS and SFI)
+- **Compliance:** Compliance (checklist, certificates, spray/fertiliser records, readiness %) · Audit day (`Assurance.tsx`, documents for inspections)
+- **The business:** Strategy · Farm Bible · Land (`Farms.tsx`, land block cards) · Contracts (`Utilities.tsx`) · Machinery · Links
 
 There's no Bix Hall screen yet: the `bixHall` data (proposal notes, rent, timeline, open questions) is only in the blob.
 

@@ -3,7 +3,7 @@
 import { SyncStatus } from './FarmHub';
 import { useEffect, useState } from 'react';
 
-export default function Header({ syncStatus, syncLabel }: { syncStatus: SyncStatus; syncLabel: string }) {
+export default function Header({ syncStatus, syncLabel, onSettings, settingsOpen }: { syncStatus: SyncStatus; syncLabel: string; onSettings: () => void; settingsOpen: boolean }) {
   const [dateStr, setDateStr] = useState('');
   useEffect(() => {
     setDateStr(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }));
@@ -20,7 +20,8 @@ export default function Header({ syncStatus, syncLabel }: { syncStatus: SyncStat
           <div className={`sync-dot${syncStatus ? ' ' + syncStatus : ''}`} />
           <span>{syncLabel}</span>
         </div>
-        <div style={{ fontSize: 11, opacity: .7 }}>{dateStr}</div>
+        <div className="header-date" style={{ fontSize: 11, opacity: .7 }}>{dateStr}</div>
+        <button className={`header-gear${settingsOpen ? ' active' : ''}`} onClick={onSettings} aria-label="Settings" title="Settings">⚙︎</button>
       </div>
     </div>
   );

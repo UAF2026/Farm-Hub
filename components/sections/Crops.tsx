@@ -172,6 +172,10 @@ export default function Crops({ db, persist, addActivity }: Props) {
 
   return (
     <>
+      <div className="card" style={{ background: 'var(--gray-pale)', fontSize: 13, lineHeight: 1.6 }}>
+        <strong>This is the old field list.</strong> The Map, Soil and Satellite tabs still read it, so it stays for now.
+        For field details, history and yields use the <strong>Fields</strong> tab, which is the master list.
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
         <button className="btn-add" onClick={() => { setEditIdx(null); setModal(true); }}>+ Add field</button>
         <button className="btn-primary" onClick={loadGatekeeper}>🌾 Load Gatekeeper fields</button>
