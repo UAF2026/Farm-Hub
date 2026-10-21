@@ -28,6 +28,8 @@ import Agronomy from './sections/Agronomy';
 import GrainTrading from './sections/GrainTrading';
 import SatelliteNDVI from './sections/SatelliteNDVI';
 import BrainDump from './sections/BrainDump';
+import Weather from './sections/Weather';
+import Fields from './sections/Fields';
 import Diary from './sections/Diary';
 import FarmBible from './sections/FarmBible';
 import FieldRecords from './sections/FieldRecords';
@@ -136,7 +138,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -291,6 +293,8 @@ export default function FarmHub() {
       <Nav section={section} onSection={setSection} />
       <div className="main">
         {section === 'dashboard' && <Dashboard db={db} persist={persist} onNavigate={setSection} />}
+        {section === 'weather' && <Weather />}
+        {section === 'fields' && <Fields db={db} persist={persist} addActivity={addActivity} />}
         {section === 'strategy' && <Strategy db={db} persist={persist} onNavigate={setSection} />}
         {section === 'tasks' && <Tasks db={db} persist={persist} addActivity={addActivity} />}
         {section === 'livestock' && <Livestock db={db} persist={persist} addActivity={addActivity} />}

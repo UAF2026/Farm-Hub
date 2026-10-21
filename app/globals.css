@@ -221,6 +221,15 @@ body {
 }
 .weather-strip a { color: rgba(255,255,255,.8); font-size: 12px; text-decoration: none; }
 
+/* FORECAST */
+.forecast-strip { display: grid; grid-template-columns: repeat(7, minmax(38px, 1fr)); gap: 3px; overflow-x: auto; }
+.forecast-day { text-align: center; background: var(--gray-pale); border-radius: 8px; padding: 6px 2px; }
+
+/* TABLES */
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.hist-table td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--gray-mid); vertical-align: top; }
+
 /* FARM CARDS */
 .farm-card { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .farm-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }

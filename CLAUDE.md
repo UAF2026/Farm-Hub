@@ -6,6 +6,13 @@ These are the handover notes from the earlier build chats, last checked against 
 
 **Keep Farm Hub separate from `assendon-wagyu-app`** (the customer-facing beef app, a different repo). Don't read, change or share code or data between them.
 
+## What the Hub is for (James's vision, 21 Oct 2026)
+Judge every feature against these. The aim is to be well ahead of other farms in how the business is run, using AI wherever it helps, including in ways James hasn't thought of. So suggest ideas, don't just wait to be asked.
+1. **Morning workplan.** Opening the laptop gives a plan for the day and week, built from history plus what's coming in: emails to answer, bills to pay, inspections to prepare for, scheme claims to submit, renewals to compare (e.g. insurance), and the routine jobs that get forgotten (invoice the straw, book the mill and mix, order next week's sprays). It organises the day-to-day chaos.
+2. **Knowledge that builds over time.** It holds the farm's past and present and keeps learning, so in a few years it knows the farm better than James does. It should be able to make suggestions like "today is the best day to drill wheat, based on 10 years of your yields" or "don't plant that area, it never yields".
+3. **Run over by a bus.** Everything needed to keep the business running should be in the Hub, ready for the next person to pick up.
+4. **One roof.** A single place for the whole farm business.
+
 ## How to work with James
 - He farms for a living and isn't a developer. Keep it plain, direct and short, with no jargon walls. Give him a clear recommendation rather than a menu of options.
 - **Commits go through GitHub Desktop, never Terminal.** When a change is ready, tell him: open GitHub Desktop → Farm-Hub repo → check the changed files → type a commit message → "Commit to main" → "Push origin". Vercel deploys automatically from `main`.
@@ -21,17 +28,19 @@ These are the handover notes from the earlier build chats, last checked against 
   - `components/FarmHub.tsx`: the app shell. Loads and saves data, holds the list of sections (`Section` type), processes the daily briefing.
   - `components/Nav.tsx`: the tab bar (labels and order).
   - `components/sections/*.tsx`: one file per tab. Types in `lib/types.ts`.
-  - `lib/`: Supabase load/save (`supabase.ts`), John Deere (`johnDeere.ts`, `jdSummaries.ts`, `jdAssurance.ts`), satellite NDVI (`satellite.ts`), Gatekeeper field/cropping data from May 2026 (`gatekeeperData.ts`).
+  - `lib/`: Supabase load/save (`supabase.ts`), John Deere (`johnDeere.ts`, `jdSummaries.ts`, `jdAssurance.ts`), satellite NDVI (`satellite.ts`), Gatekeeper field/cropping data from May 2026 (`gatekeeperData.ts`), master field list helpers (`fields.ts`), weather (`weather.ts`).
   - `app/api/*`: server routes (see below).
   - `public/assurance-docs/`: the PDFs shown in the Assurance tab (policies, plans, certificates). `public/land-parcels.geojson` draws the Map tab.
 - **Database:** Supabase (EU), project `rzitnuwfqabgqvznkzax`. RLS is on.
   - `farmdata`: **a single row, `id = 'farmhub_main'`, whose `data` jsonb column holds almost everything** (cattle, schemes, finance, croppingPlans, sprays, fertilisers, compliance checklist, farmBible, dailyBriefing, purchases, grainTrading, soil/sap tests, jdOperations, bixHall and more). Patch the keys you need inside that blob. Don't overwrite the whole row.
   - `farmdata_backups`: snapshots (`farmdata_id`, `data`, `created_at`). Take one before any big data change.
-  - `field_boundaries`: 63 official RPA parcels, 500.97 ha. Used by the satellite NDVI code.
+  - `field_boundaries`: 63 official RPA parcels, 500.97 ha. Used by the satellite NDVI code. Only land on our own SBI: fields the landlord claims (Bix Hall, Grange) aren't in it.
   - `satellite_ndvi`: has data (about 340 readings, Mar–Apr 2026) from the spring sync.
   - `brain_dump`: has a few entries; used by the Brain Dump tab via `/api/braindump`.
-  - `field_yields`: exists but is empty and nothing in the code uses it yet.
+  - `field_yields`: one row per field + harvest year + crop (`field_id` → `data.fieldRegister[].id`), with yield, tonnes, moisture and protein. Read and written through `/api/yields`. Harvest 2026 yields copied in from the 25/26 cropping plan on 21 Oct 2026.
+  - `weather_daily`: one row per day of farm weather from Open-Meteo (ERA5), from 2000 onwards. Written by `/api/weather/sync`, which Vercel cron runs every morning (`vercel.json`). Anyone with the anon key can read it; only the service key can write.
 - **How the app connects to Supabase:** the browser uses a Supabase URL and anon key that James enters once in the app's setup / Settings screen (saved in that browser's localStorage). The server routes use `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` from Vercel environment variables.
+- **Running it locally:** `.env.local` (gitignored) holds the Supabase URL and the *anon* key, so server routes on this computer can only do what the anon key allows. `.claude/launch.json` starts `npm run dev` on port 3000. To test with real data without touching it, open the app, choose "Use on this device only", then load a copy of the blob from `/api/data` into localStorage key `uaf_v4`. Edits then stay in that browser.
 - **Claude (Anthropic) API:** called **straight from the browser**, not from the server. James pastes his key into Settings and it's kept in that browser's localStorage (`uaf_anthropic_key`). It's not in Vercel env vars. Used by Finance (invoice photo scanning), Brain Dump (sorting notes) and the AI tab. Never print or commit a key.
 - **Other connections** (all secrets in Vercel environment variables; see `.env.example` for the Supabase ones):
   - **John Deere Operations Center:** OAuth via `/api/jd/authorize` and `/api/jd/callback`; tokens saved in `data.jdAuth`. `/api/jd/sync-and-import` refreshes `data.jdOperations` and appends new spray/fertiliser records into `data.sprays` / `data.fertilisers` (never edits or removes existing ones; dedupes by `jdOpId`). Deere operation IDs aren't stable over time, so old records can lose their link. Field name matching lives in `data.jdFieldMap` (JD Ops tab → field reconcile).
@@ -44,13 +53,15 @@ These are the handover notes from the earlier build chats, last checked against 
 - **The cropping plan UI (`CroppingPlan.tsx`) reads `data.croppingPlans`** (an array of `{season, plans, lastUpdated}`), matched by `season`. Seasons currently in the data: `25/26`, `26/27`, `27/28`. It does **not** read `data.cropping`, which is legacy (it's still in the blob). Edits to the wrong key are invisible in the app.
 - **Compliance templates:** `BEEF_CHECKLIST` / `ARABLE_CHECKLIST` in `components/sections/Compliance.tsx`. When adding checklist items, update the template as well as the live data, or a reload brings the old version back.
 - **Old sample data in the compliance checklist.** Settings used to have a "Load sample compliance data" button that added made-up records. The button was removed on 21 Oct 2026. On the same day, the 46 sample checklist items James had never edited were deleted from `data.checklist` (backup: `farmdata_backups` id 7). Seven sample items that James had since updated with real answers were kept (vet health plan, biosecurity, visitor log, slurry, copper, first aid, Five Freedoms). If you see invented-looking details such as cert numbers F-2023-8741 or B-2024-14892, they come from that sample data.
-- Field areas: **`field_boundaries` (RPA open data, 63 parcels, 500.97 ha) is authoritative.** The old `fields` array numbers in the blob are stale estimates (a copy from 28 Apr 2026 is kept in `_backup_fields_2026_04_28`).
+- **Fields: use the master field list, `data.fieldRegister`** (type `MasterField`, Fields tab, helpers in `lib/fields.ts`). It has one entry per field and links the RPA parcels, the Gatekeeper codes (`GK-…`, also used as `croppingPlans[].plans[].fieldParcel`) and the John Deere field names for that field. Areas come from RPA where the field is on our SBI, otherwise from Gatekeeper. It was built on 21 Oct 2026; entries with `linksChecked: false` were matched by name or area and James still needs to check them. Never change an entry's `id` once yields point at it.
+  - The older `data.fields` array (Gatekeeper estimates; a copy from 28 Apr 2026 is in `_backup_fields_2026_04_28`) is still what the Map, Crops, Soil, Satellite and JD Ops tabs read. Moving them onto the master list is unfinished work. `data.jdFieldMap` (JD Ops tab) uses a mix of parcel ids and doesn't line up with `data.fields` either.
+  - John Deere "harvest" jobs include grass cuts, and a season can have several drillings (forage mixes, turnips, re-drills). None of the John Deere jobs so far carry a combine yield.
 - The satellite NDVI sync is parked for the off-season. Don't spend time on it until the autumn crops are established.
 
 ## App sections (as built)
 The tab bar, in order (`components/Nav.tsx`):
 
-Dashboard · Strategy (initiatives, farm bible goals) · Tasks · Livestock (cattle, imported from a CTS CSV) · Map (RPA parcels) · Crops · Soil (soil and sap tests) · Agronomy (agronomist visit recommendations) · Finance (VAT, invoice scanning) · Schemes (CS and SFI) · Grain (grain marketing and quality tests) · Satellite (NDVI) · Medicine · Machinery · Contracts (file `Utilities.tsx`: contracts, utilities, memberships) · Compliance (checklist, certificates, spray/fertiliser records, readiness %) · Assurance (audit-day list of documents, certs and checklist) · Farms (land block cards) · JD Ops (John Deere sync and field matching) · Links · Brain Dump · Diary · Bible (Farm Bible reference) · Field Records (spray/fertiliser records from John Deere with assurance red-flag checks) · Purchases (Crop Advisors orders and chemical/fertiliser stock) · Cropping Plan · Costings (gross margins, incl. Wildfarmed comparison) · AI (chat assistant) · Settings.
+Dashboard (with 7-day forecast) · Weather (forecast, rain and warmth vs the 20-year average, soil temperature) · Strategy (initiatives, farm bible goals) · Tasks · Livestock (cattle, imported from a CTS CSV) · Fields (master field list; each field's crop history, John Deere drilling/harvest jobs and yields) · Map (RPA parcels) · Crops · Soil (soil and sap tests) · Agronomy (agronomist visit recommendations) · Finance (VAT, invoice scanning) · Schemes (CS and SFI) · Grain (grain marketing and quality tests) · Satellite (NDVI) · Medicine · Machinery · Contracts (file `Utilities.tsx`: contracts, utilities, memberships) · Compliance (checklist, certificates, spray/fertiliser records, readiness %) · Assurance (audit-day list of documents, certs and checklist) · Farms (land block cards) · JD Ops (John Deere sync and field matching) · Links · Brain Dump · Diary · Bible (Farm Bible reference) · Field Records (spray/fertiliser records from John Deere with assurance red-flag checks) · Purchases (Crop Advisors orders and chemical/fertiliser stock) · Cropping Plan · Costings (gross margins, incl. Wildfarmed comparison) · AI (chat assistant) · Settings.
 
 There's no Bix Hall screen yet: the `bixHall` data (proposal notes, rent, timeline, open questions) is only in the blob.
 
@@ -71,5 +82,6 @@ A scheduled "farm secretary" task runs each morning in Claude. It reads Gmail an
 - Supplier and contact directory.
 - Bix Hall 10-year FBT proposal (data is in the `bixHall` key; no screen yet).
 - Scheme income replacement tracking (SFI26 / CSHT).
-- Yields: `field_yields` table is ready but empty.
+- Fill in yields for earlier harvests (only harvest 2026 is in so far).
+- Move the Map, Crops, Soil, Satellite and JD Ops tabs onto the master field list.
 - NDVI vs grain protein correlation (some spring 2026 NDVI data now exists; see also `Protein_Prediction_Analysis.xlsx` in the repo root).

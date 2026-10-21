@@ -419,6 +419,49 @@ export interface FarmBible {
   lastUpdated?: string;         // ISO timestamp
 }
 
+/* ─── Master field list ────────────────────────────────────────────────────
+ * One entry per field the business farms (or has on its SBI). It ties
+ * together the different names each system uses for the same field:
+ * RPA parcels, Gatekeeper codes (also used by croppingPlans.fieldParcel)
+ * and John Deere Operations Center field names. Yields in the Supabase
+ * field_yields table point at MasterField.id.
+ * The older `fields` array is still used by several tabs; it is not yet
+ * generated from this list. */
+export interface MasterField {
+  id: string;               // stable slug, e.g. 'borderleys'. Never change once yields point at it.
+  name: string;
+  areaHa: number;           // RPA area where the field is on our SBI, else the Gatekeeper figure
+  areaSource: 'rpa' | 'gatekeeper' | 'manual';
+  rpaParcels: string[];     // e.g. 'SU7291 6235'
+  gkCodes: string[];        // e.g. 'GK-Borderleys'
+  gkNames?: string[];
+  gkAreaHa?: number;
+  jdNames: string[];        // John Deere field names whose jobs belong to this field
+  land: string;             // land block / agreement, e.g. 'Bix Hall', 'Hollandridge'
+  use: 'arable' | 'grass' | 'other' | 'unknown';
+  status: 'active' | 'offcut' | 'not-ours';
+  confirmed: boolean;       // James has checked this entry
+  linksChecked?: boolean;   // false = the RPA/Gatekeeper/JD links were matched by name or area and need a look
+  notes?: string;
+}
+
+export interface FieldYield {
+  id?: string;
+  field_id: string;
+  field_name: string;
+  rpa_parcel?: string | null;
+  harvest_year: string;     // '2026' = harvested 2026 (season 25/26)
+  crop: string;
+  variety?: string | null;
+  yield_t_per_ha?: number | null;
+  total_tonnes?: number | null;
+  area_ha?: number | null;
+  moisture_pct?: number | null;
+  protein_pct?: number | null;
+  source?: string | null;
+  notes?: string | null;
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -437,6 +480,7 @@ export interface FarmData {
   jdOperations?: JdOperation[];
   jdSyncStatus?: JdSyncStatus;
   jdFieldMap?: JdFieldMapEntry[];   // JD field name → Hub parcel ID lookup table
+  fieldRegister?: MasterField[];    // the master field list (see MasterField)
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];

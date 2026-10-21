@@ -4,9 +4,11 @@ import { Section } from './FarmHub';
 
 const TABS: { id: Section; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'weather', label: '🌦 Weather' },
   { id: 'strategy', label: '🧭 Strategy' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'livestock', label: 'Livestock' },
+  { id: 'fields', label: '🗂 Fields' },
   { id: 'map', label: 'Map' },
   { id: 'crops', label: 'Crops' },
   { id: 'soilhealth', label: 'Soil' },

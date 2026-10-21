@@ -3,10 +3,12 @@
 import { FarmData, DailyBriefing } from '@/lib/types';
 import type { Task } from '@/lib/types';
 import { fmtDate, fmtMoney } from '@/lib/utils';
+import { ForecastStrip, useWeather } from './Weather';
 
-interface Props { db: FarmData; persist: (db: FarmData) => void; onNavigate?: (s: 'strategy' | 'farmbible') => void; }
+interface Props { db: FarmData; persist: (db: FarmData) => void; onNavigate?: (s: 'strategy' | 'farmbible' | 'weather') => void; }
 
 export default function Dashboard({ db, persist, onNavigate }: Props) {
+  const weather = useWeather();
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const in1 = new Date(today); in1.setDate(today.getDate() + 1);
   const in30 = new Date(today); in30.setDate(today.getDate() + 30);
@@ -138,10 +140,14 @@ export default function Dashboard({ db, persist, onNavigate }: Props) {
         </div>
       )}
 
-      <div className="weather-strip">
-        <span>Henley-on-Thames — check forecast before fieldwork</span>
-        <a href="https://www.metoffice.gov.uk/weather/forecast/gcpvqhv8n" target="_blank" rel="noreferrer">Met Office →</a>
-      </div>
+      {weather.data?.forecast.length ? (
+        <ForecastStrip forecast={weather.data.forecast} onOpen={onNavigate ? () => onNavigate('weather') : undefined} />
+      ) : (
+        <div className="weather-strip">
+          <span>Henley-on-Thames — check forecast before fieldwork</span>
+          <a href="https://www.metoffice.gov.uk/weather/forecast/gcpvqhv8n" target="_blank" rel="noreferrer">Met Office →</a>
+        </div>
+      )}
 
       <div className="metric-grid">
         <div className="metric-card">
