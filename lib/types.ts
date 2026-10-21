@@ -437,6 +437,7 @@ export interface MasterField {
   gkNames?: string[];
   gkAreaHa?: number;
   jdNames: string[];        // John Deere field names whose jobs belong to this field
+  otherNames?: string[];    // names used in agreements or by other people, e.g. 'Home' on the Bix cropping licence
   land: string;             // land block / agreement, e.g. 'Bix Hall', 'Hollandridge'
   use: 'arable' | 'grass' | 'other' | 'unknown';
   status: 'active' | 'offcut' | 'not-ours';

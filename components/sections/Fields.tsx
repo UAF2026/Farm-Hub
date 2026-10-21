@@ -64,7 +64,7 @@ export default function Fields({ db, persist, addActivity }: Props) {
 
   const q = search.trim().toLowerCase();
   const shown = register.filter(f =>
-    (!q || [f.name, ...(f.gkNames || []), ...f.jdNames, ...f.rpaParcels].some(s => s.toLowerCase().includes(q))) &&
+    (!q || [f.name, ...(f.gkNames || []), ...(f.otherNames || []), ...f.jdNames, ...f.rpaParcels].some(s => s.toLowerCase().includes(q))) &&
     (!land || (f.land || 'Not set') === land) &&
     (!onlyToCheck || (!f.linksChecked && !f.confirmed)));
   const groups = new Map<string, MasterField[]>();
@@ -88,7 +88,7 @@ export default function Fields({ db, persist, addActivity }: Props) {
 
       <div className="card">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <input type="text" placeholder="Search fields, Gatekeeper or John Deere names…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: '1 1 220px', marginBottom: 0 }} />
+          <input type="text" placeholder="Search fields, other names or parcel numbers…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: '1 1 220px', marginBottom: 0 }} />
           <select value={land} onChange={e => setLand(e.target.value)} style={{ flex: '0 1 200px', marginBottom: 0 }}>
             <option value="">All land</option>
             {[...LAND_BLOCKS, 'Not set'].map(l => <option key={l} value={l}>{l}</option>)}
@@ -253,6 +253,7 @@ function FieldPage({ field, db, yields, unlinked, onBack, onChange, onYieldsChan
 
         {!editing && (
           <div style={{ marginTop: 12, fontSize: 13, lineHeight: 1.7 }}>
+            {field.otherNames?.length ? <div><strong>Also called:</strong> {field.otherNames.join(', ')}</div> : null}
             <div><strong>RPA parcels:</strong> {field.rpaParcels.length ? field.rpaParcels.join(', ') : 'none — not on our SBI'}</div>
             <div><strong>Gatekeeper:</strong> {field.gkNames?.length ? `${field.gkNames.join(', ')}${field.gkAreaHa ? ` (${field.gkAreaHa} ha)` : ''}` : 'none'}</div>
             <div><strong>John Deere:</strong> {field.jdNames.length ? `${field.jdNames.join(', ')} · ${ops.length} jobs recorded` : 'none linked'}</div>
