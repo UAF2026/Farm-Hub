@@ -88,6 +88,18 @@ export interface AssuranceImportPlan {
   unmatchedJdFields: string[];
 }
 
+const squash = (v: string) => (v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function opKey(kind: 'spray' | 'fert', date: string, jdField: string): string {
+  return `${kind}|${date}|${squash(jdField)}`;
+}
+
+/** Same key for a record already in the Hub: the JD field name is kept in its notes. */
+function recordKey(kind: 'spray' | 'fert', r: { date: string; field: string; notes?: string }): string {
+  const jdField = /JD field "([^"]+)"/.exec(r.notes || '')?.[1] ?? r.field;
+  return opKey(kind, (r.date || '').slice(0, 10), jdField);
+}
+
 export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
   const { jdOps, hubFields, existingSprays, existingFertilisers, jdFieldOverrides } = args;
 
@@ -101,9 +113,26 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
   }
 
   // Existing JD op IDs already imported, so we don't double-up.
+  const liveOpIds = new Set(jdOps.map((o) => o.id));
   const importedOpIds = new Set<string>();
   for (const r of existingSprays) if (r.jdOpId) importedOpIds.add(r.jdOpId);
   for (const r of existingFertilisers) if (r.jdOpId) importedOpIds.add(r.jdOpId);
+
+  // John Deere re-numbers operation IDs from time to time (by Oct 2026 only
+  // ~40 of 610 imported sprays still matched a live ID), so also treat a job
+  // as already imported if a record of the same kind for the same JD field and
+  // day is on file. Product names aren't compared: they're often corrected by
+  // hand after import (JD 'Ahi-flower' → 'Eagle + Phase II'). Each existing
+  // record covers one job, so two jobs on the same day still import the second.
+  const onFile = new Map<string, number>();
+  const bump = (k: string) => onFile.set(k, (onFile.get(k) || 0) + 1);
+  for (const r of existingSprays) if (!r.jdOpId || !liveOpIds.has(r.jdOpId)) bump(recordKey('spray', r));
+  for (const r of existingFertilisers) if (!r.jdOpId || !liveOpIds.has(r.jdOpId)) bump(recordKey('fert', r));
+  const takeOnFile = (k: string) => {
+    const n = onFile.get(k) || 0;
+    if (n > 0) onFile.set(k, n - 1);
+    return n > 0;
+  };
 
   const newSprays: SprayRecord[] = [];
   const newFertilisers: FertiliserRecord[] = [];
@@ -153,8 +182,17 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
         }`
       : 'Rate/area to be confirmed (measurements not yet synced).';
 
-    if (fertProducts.length > 0) {
-      const productName = fertProducts.map((p) => p.name).join(' + ');
+    const fertName = fertProducts.map((p) => p.name).join(' + ');
+    const sprayName = sprayProducts.map((p) => p.name).join(' + ');
+    const fertDone = !fertProducts.length || takeOnFile(opKey('fert', dateOnly, op.fieldName));
+    const sprayDone = !sprayProducts.length || takeOnFile(opKey('spray', dateOnly, op.fieldName));
+    if (fertDone && sprayDone) {
+      skipped.duplicate++;
+      continue;
+    }
+
+    if (fertProducts.length > 0 && !fertDone) {
+      const productName = fertName;
       const totalN = fertProducts.reduce((acc, p) => acc + sniffN(p.name), 0);
       const totalS = fertProducts.reduce((acc, p) => acc + sniffS(p.name), 0);
       newFertilisers.push({
@@ -180,8 +218,8 @@ export function buildAssuranceImport(args: BuildArgs): AssuranceImportPlan {
       });
     }
 
-    if (sprayProducts.length > 0) {
-      const productName = sprayProducts.map((p) => p.name).join(' + ');
+    if (sprayProducts.length > 0 && !sprayDone) {
+      const productName = sprayName;
       newSprays.push({
         id: newId(),
         date: dateOnly,

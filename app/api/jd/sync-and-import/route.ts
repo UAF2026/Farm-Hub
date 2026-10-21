@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildAssuranceImport } from '@/lib/jdAssurance';
+import { jdMatchInputs } from '@/lib/fields';
 import type { FarmData, Activity } from '@/lib/types';
 
 // Combined nightly/weekly job: refreshes farmdata.jdOperations from John Deere
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
   // Step 3 — build the import plan (same logic as the manual "Import to Hub" button).
   const plan = buildAssuranceImport({
     jdOps: current.jdOperations ?? [],
-    hubFields: current.fields ?? [],
+    ...jdMatchInputs(current),
     existingSprays: current.sprays ?? [],
     existingFertilisers: current.fertilisers ?? [],
   });

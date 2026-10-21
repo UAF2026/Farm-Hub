@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { FarmData, JdOperation } from '@/lib/types';
 import { buildAssuranceImport, refreshAssuranceFromMeasurements } from '@/lib/jdAssurance';
+import { jdMatchInputs, unlinkedJdNames } from '@/lib/fields';
 import JdFieldReconcile from './JdFieldReconcile';
 
 interface Props {
@@ -129,11 +130,11 @@ export default function JohnDeere({ db, persist }: Props) {
     () =>
       buildAssuranceImport({
         jdOps: ops,
-        hubFields: db.fields || [],
+        ...jdMatchInputs(db),
         existingSprays: db.sprays || [],
         existingFertilisers: db.fertilisers || [],
       }),
-    [ops, db.fields, db.sprays, db.fertilisers]
+    [ops, db.fieldRegister, db.fields, db.jdOperations, db.sprays, db.fertilisers] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const [importMsg, setImportMsg] = useState<string>('');
@@ -221,9 +222,10 @@ export default function JohnDeere({ db, persist }: Props) {
   // Map completeness indicator for the tab label
   const mapStats = useMemo(() => {
     const total = new Set((db.jdOperations || []).map((o) => o.fieldName)).size;
-    const confirmed = (db.jdFieldMap || []).filter((e) => e.confirmed).length;
-    return { total, confirmed };
-  }, [db.jdOperations, db.jdFieldMap]);
+    const ignored = (db.jdFieldMap || []).filter((e) => e.hubParcel === '__IGNORE__').map((e) => e.jdName);
+    const unlinked = unlinkedJdNames(db.fieldRegister || [], db.jdOperations, ignored);
+    return { total, confirmed: total - unlinked.length, unlinked };
+  }, [db.jdOperations, db.jdFieldMap, db.fieldRegister]);
 
   return (
     <section className="card">
@@ -253,7 +255,19 @@ export default function JohnDeere({ db, persist }: Props) {
 
       {/* Field Map reconciliation panel */}
       {activeTab === 'reconcile' && (
-        <JdFieldReconcile db={db} persist={persist} />
+        db.fieldRegister?.length ? (
+          <div style={{ fontSize: 14, lineHeight: 1.7 }}>
+            <p>John Deere field names are now linked to fields on the <strong>Fields</strong> tab (open a field → Edit → John Deere field names). Contract work for other people is hidden.</p>
+            <p style={{ marginTop: 8 }}>
+              {mapStats.unlinked.length
+                ? <>Not linked yet ({mapStats.unlinked.length}): {mapStats.unlinked.join(' · ')}</>
+                : <>Every John Deere field name is linked or hidden.</>}
+            </p>
+            <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => { window.location.hash = 'fields'; }}>Go to Fields</button>
+          </div>
+        ) : (
+          <JdFieldReconcile db={db} persist={persist} />
+        )
       )}
 
       {/* Operations tab content */}

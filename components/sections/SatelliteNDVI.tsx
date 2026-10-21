@@ -183,8 +183,8 @@ export default function SatelliteNDVI({ db }: Props) {
 
   // All arable fields from db for cross-reference
   const arableFields = useMemo(() =>
-    db.fields.filter(f => f.status === 'In crop' || f.status === 'Active'),
-    [db.fields]
+    (db.fieldRegister || []).filter(f => f.status === 'active' && f.use === 'arable' && f.rpaParcels.length),
+    [db.fieldRegister]
   );
 
   const cardStyle: React.CSSProperties = { background: 'var(--color-card)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--color-border)' };

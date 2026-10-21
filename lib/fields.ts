@@ -2,7 +2,7 @@
 // Everything that needs to find "the same field" across Gatekeeper, the
 // cropping plans, John Deere and the yields table should go through here.
 
-import type { FarmData, MasterField, JdOperation } from './types';
+import type { FarmData, MasterField, JdOperation, Field } from './types';
 import { GK_ROTATION_HISTORY } from './gatekeeperData';
 import { prettyCropName } from './jdSummaries';
 
@@ -112,3 +112,90 @@ export const LAND_BLOCKS = [
   'Home farm (Stonor)', 'Owned', 'Bix Hall', 'Hollandridge', 'Grange & Shenley (Knowles)',
   'Bellhatch', 'Bix Manor', 'Valley Farm Bix',
 ];
+
+/* ─── Lookups used by the other tabs ─────────────────────────────────────── */
+
+/** Every name a field goes by (its own, Gatekeeper, John Deere, agreements), normalised. */
+export function fieldNameKeys(f: MasterField): string[] {
+  return [f.name, ...(f.gkNames || []), ...f.jdNames, ...(f.otherNames || []), ...f.rpaParcels].map(norm).filter(Boolean);
+}
+
+/** Looser key for a second-pass match: 'The Bank' = 'Bank', 'Barn Field' = 'Barn', 'Spring pit' = 'Spring Pit'. */
+const loose = (s: string) => norm(s).replace(/^the/, '').replace(/field$/, '');
+
+/** Find the field a free-text name refers to (old field-list names, spray records, soil tests…). */
+export function findFieldByName(register: MasterField[], name?: string): MasterField | undefined {
+  if (!name) return undefined;
+  const k = norm(name);
+  const exact = register.find(f => norm(f.name) === k) || register.find(f => fieldNameKeys(f).includes(k));
+  if (exact) return exact;
+  const l = loose(name);
+  const hits = l.length >= 3 ? register.filter(f => fieldNameKeys(f).some(key => loose(key) === l)) : [];
+  return hits.length === 1 ? hits[0] : undefined;   // only when it's unambiguous
+}
+
+/** The field that owns an RPA parcel, given the map's sheet and parcel ids (e.g. 'SU7288', '5509'). */
+export function findFieldByParcel(register: MasterField[], sheetId: string, parcelId: string): MasterField | undefined {
+  const ref = `${sheetId} ${parcelId}`.replace(/\s+/g, ' ').trim().toUpperCase();
+  return register.find(f => f.rpaParcels.some(p => p.replace(/\s+/g, ' ').trim().toUpperCase() === ref));
+}
+
+/** Records (sprays, fertilisers, soil tests…) whose `field` text belongs to this field. */
+export function recordsForField<T extends { field?: string }>(f: MasterField, records: T[] = []): T[] {
+  const keys = new Set(fieldNameKeys(f));
+  const looseKeys = new Set(fieldNameKeys(f).map(loose).filter(k => k.length >= 3));
+  return records.filter(r => r.field && (keys.has(norm(r.field)) || looseKeys.has(loose(r.field))));
+}
+
+/** What's in the ground for the harvest coming up (from the cropping plan, else Gatekeeper). */
+export function currentCrop(f: MasterField, db: FarmData): { crop: string; variety?: string } | null {
+  const h = currentHarvestYear();
+  const line = cropHistory(f, db).find(l => l.harvest === h);
+  if (line?.crop) return { crop: line.crop, variety: line.variety };
+  if (f.use === 'grass') return { crop: 'Grass' };
+  return null;
+}
+
+/** Active fields in a stable order. */
+export function activeFields(db: FarmData): MasterField[] {
+  return (db.fieldRegister || []).filter(f => f.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Rough colour for a crop name, shared by the map and lists. */
+export function cropColour(crop?: string): string {
+  const c = (crop || '').toLowerCase();
+  if (!c) return '#9db4c4';
+  if (c.includes('wheat') || c.includes('skyfall') || c.includes('extase') || c.includes('ultimatum') || c.includes('gromwell') || c.includes('gromswell') || c.includes('diamond')) return '#e2c234';
+  if (c.includes('barley')) return '#d4900a';
+  if (c.includes('bean') || c.includes('pea')) return '#9a6fb0';
+  if (c.includes('ahiflower') || c.includes('chia')) return '#d96c9a';
+  if (c.includes('oat')) return '#c8b060';
+  if (c.includes('rape') || c.includes('osr')) return '#b8d820';
+  if (c.includes('ley') || c.includes('temp')) return '#7cc47c';
+  if (c.includes('grass') || c.includes('pasture')) return '#3a8c3a';
+  if (c.includes('cover') || c.includes('fallow') || c.includes('ab15')) return '#30a0a0';
+  return '#78a8c8';
+}
+
+/**
+ * Inputs for the John Deere matcher (buildJdSummaries / buildAssuranceImport).
+ * With a master field list, each field is matched only to the John Deere names
+ * linked to it (compared ignoring case and spaces), so jobs never land on a
+ * field by guesswork and unlinked names (e.g. contract work) are skipped.
+ * Without one, falls back to the old field list and fuzzy name matching.
+ */
+export function jdMatchInputs(db: FarmData): { hubFields: Field[]; jdFieldOverrides?: Record<string, string[]> } {
+  const reg = db.fieldRegister;
+  if (!reg?.length) return { hubFields: db.fields || [] };
+  const opNames = Array.from(new Set((db.jdOperations || []).map(o => o.fieldName).filter(Boolean)));
+  const hubFields: Field[] = [];
+  const jdFieldOverrides: Record<string, string[]> = {};
+  for (const f of reg) {
+    const keys = new Set(f.jdNames.map(norm));
+    const names = opNames.filter(n => keys.has(norm(n)));
+    if (!names.length) continue;
+    hubFields.push({ name: f.name, area: f.areaHa, status: f.use === 'arable' ? 'In crop' : 'Grass', crop: '', notes: '' });
+    jdFieldOverrides[f.name] = names;
+  }
+  return { hubFields, jdFieldOverrides };
+}

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { FarmData, FarmBible as FarmBibleType, FarmOverview, FarmPerson, FarmEnterprise, FarmAgreement, FieldNote, FarmDecision } from '@/lib/types';
+import { activeFields, findFieldByName } from '@/lib/fields';
 import { uid } from '@/lib/utils';
 
 type BibleTab = 'overview' | 'people' | 'enterprises' | 'agreements' | 'fields' | 'decisions';
@@ -622,8 +623,12 @@ function FieldNotesChapter({ bible, db, onSave }: { bible: FarmBibleType; db: Fa
     onSave({ ...bible, fieldNotes: bible.fieldNotes.filter(fn => fn.id !== id), lastUpdated: new Date().toISOString() });
   };
 
-  const fieldNames = useMemo(() => db.fields.map(f => f.name).filter(Boolean).sort(), [db.fields]);
-  const noted = new Set(bible.fieldNotes.map(fn => fn.fieldName));
+  const fieldNames = useMemo(
+    () => (db.fieldRegister?.length ? activeFields(db).map(f => f.name) : db.fields.map(f => f.name)).filter(Boolean).sort(),
+    [db.fieldRegister, db.fields] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // Notes saved under an older spelling still count for the master-list field.
+  const noted = new Set(bible.fieldNotes.map(fn => findFieldByName(db.fieldRegister || [], fn.fieldName)?.name ?? fn.fieldName));
   const unnoted = fieldNames.filter(n => !noted.has(n));
 
   const DRAINAGE_COLOUR: Record<string, string> = { 'Good': '#2d6a4f', 'Average': '#f4a261', 'Poor': '#e85d04', 'Very poor': '#e63946' };

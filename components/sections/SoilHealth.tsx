@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { FarmData, SapTest, SapTestReadings, SoilTestResult } from '@/lib/types';
 import { uid } from '@/lib/utils';
+import { findFieldByName, currentCrop, activeFields } from '@/lib/fields';
 
 /* ─── Nutriscope (Senseen) Excel import ─────────────────────────────────── */
 
@@ -337,6 +338,14 @@ const EMPTY_SAP_FORM: SapForm = {
 export default function SoilHealth({ db, persist, addActivity }: Props) {
   const soilTests: SoilTestResult[] = db.soilTests || [];
   const sapTests: SapTest[] = db.sapTests || [];
+  // Tests are grouped under the master field list's names, so 'Lodge Farm' and
+  // 'Lodge Farm Field' land on the same field. The stored records keep whatever
+  // name they were saved with.
+  const register = db.fieldRegister || [];
+  const canon = (name: string) => findFieldByName(register, name)?.name ?? name;
+  const soilView = useMemo(() => soilTests.map(t => ({ ...t, field: canon(t.field) })), [soilTests, register]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sapView = useMemo(() => sapTests.map(t => ({ ...t, field: canon(t.field) })), [sapTests, register]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fieldNames = useMemo(() => activeFields(db).map(f => f.name), [db.fieldRegister]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [view, setView] = useState<'overview' | 'tests' | 'sap' | 'actions'>('overview');
   const [showSoilModal, setShowSoilModal] = useState(false);
@@ -359,19 +368,19 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
 
   // Collect all field names from soil tests, sap tests and existing fields
   const allFields = useMemo(() => {
-    const fromTests = soilTests.map(t => t.field);
-    const fromSap = sapTests.map(t => t.field);
-    const fromFields = db.fields.map(f => f.name);
+    const fromTests = soilView.map(t => t.field);
+    const fromSap = sapView.map(t => t.field);
+    const fromFields = fieldNames;
     const seen: Record<string, boolean> = {};
     return [...fromFields, ...fromTests, ...fromSap]
       .filter(Boolean)
       .filter(f => { if (seen[f]) return false; seen[f] = true; return true; })
       .sort();
-  }, [db.fields, soilTests, sapTests]);
+  }, [fieldNames, soilView, sapView]);
 
   const summaries = useMemo(
-    () => buildFieldSummaries(allFields, soilTests, sapTests),
-    [allFields, soilTests, sapTests]
+    () => buildFieldSummaries(allFields, soilView, sapView),
+    [allFields, soilView, sapView]
   );
 
   const actionFields = summaries.filter(s => s.issues.length > 0);
@@ -557,9 +566,12 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
 
   /* ─── Field profile card ────────────────────────────────────────────── */
   const profileField = selectedField || (allFields.length > 0 ? allFields[0] : '');
-  const profileTests = soilTests.filter(t => t.field === profileField).sort((a, b) => b.date.localeCompare(a.date));
-  const profileSaps = sapTests.filter(t => t.field === profileField).sort((a, b) => b.date.localeCompare(a.date));
-  const profileCrop = db.fields.find(f => f.name === profileField);
+  const profileTests = soilView.filter(t => t.field === profileField).sort((a, b) => b.date.localeCompare(a.date));
+  const profileSaps = sapView.filter(t => t.field === profileField).sort((a, b) => b.date.localeCompare(a.date));
+  const profileMaster = findFieldByName(register, profileField);
+  const profileCrop = profileMaster
+    ? { area: profileMaster.areaHa, crop: currentCrop(profileMaster, db)?.crop || '', status: profileMaster.use }
+    : undefined;
 
   /* ─── Filtered test list ────────────────────────────────────────────── */
   const filteredTests = soilTests
@@ -676,14 +688,14 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
                 placeholder="Detected from file…"
               />
               <datalist id="import-fields">
-                {db.fields.map(f => <option key={f.name} value={f.name} />)}
+                {fieldNames.map(n => <option key={n} value={n} />)}
               </datalist>
             </div>
             <div className="field-row" style={{ flex: '1 1 140px' }}>
               <label className="form-label">Crop (optional)</label>
               <input type="text" value={importCrop} onChange={e => setImportCrop(e.target.value)} placeholder="Winter wheat…" list="import-crops" />
               <datalist id="import-crops">
-                {db.fields.map(f => f.crop).filter((c, i, a) => c && a.indexOf(c) === i).map(c => <option key={c} value={c} />)}
+                {activeFields(db).map(f => currentCrop(f, db)?.crop || '').filter((c, i, a) => c && a.indexOf(c) === i).map(c => <option key={c} value={c} />)}
               </datalist>
             </div>
             <div className="field-row" style={{ flex: '1 1 120px' }}>
@@ -1158,7 +1170,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
                   placeholder="Field name"
                 />
                 <datalist id="soil-fields">
-                  {db.fields.map(f => <option key={f.name} value={f.name} />)}
+                  {fieldNames.map(n => <option key={n} value={n} />)}
                 </datalist>
               </div>
               <div className="field-row" style={{ flex: '1 1 140px' }}>
@@ -1302,7 +1314,7 @@ export default function SoilHealth({ db, persist, addActivity }: Props) {
                   placeholder="Field name"
                 />
                 <datalist id="sap-fields">
-                  {db.fields.map(f => <option key={f.name} value={f.name} />)}
+                  {fieldNames.map(n => <option key={n} value={n} />)}
                 </datalist>
               </div>
               <div className="field-row" style={{ flex: '1 1 130px' }}>

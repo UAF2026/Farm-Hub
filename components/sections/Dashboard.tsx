@@ -4,6 +4,7 @@ import { FarmData, DailyBriefing } from '@/lib/types';
 import type { Task } from '@/lib/types';
 import { fmtDate, fmtMoney } from '@/lib/utils';
 import { ForecastStrip, useWeather } from './Weather';
+import { activeFields, currentCrop } from '@/lib/fields';
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; onNavigate?: (s: 'strategy' | 'farmbible' | 'weather') => void; }
 
@@ -13,7 +14,11 @@ export default function Dashboard({ db, persist, onNavigate }: Props) {
   const in1 = new Date(today); in1.setDate(today.getDate() + 1);
   const in30 = new Date(today); in30.setDate(today.getDate() + 30);
 
-  const inCrop = db.fields.filter(f => f.status === 'In crop').length;
+  // Arable fields with a crop in for the coming harvest, from the master field list.
+  const farmed = db.fieldRegister?.length ? activeFields(db) : [];
+  const inCrop = db.fieldRegister?.length
+    ? farmed.filter(f => f.use === 'arable' && currentCrop(f, db)).length
+    : db.fields.filter(f => f.status === 'In crop').length;
 
   const billsDue = db.finance
     .filter(f => f.type.includes('Bill') && f.status === 'Outstanding' && f.due && new Date(f.due + 'T12:00:00') <= in30)
@@ -158,7 +163,7 @@ export default function Dashboard({ db, persist, onNavigate }: Props) {
         <div className="metric-card">
           <div className="metric-label">Fields in crop</div>
           <div className="metric-value">{inCrop}</div>
-          <div className="metric-sub">of {db.fields.length} registered</div>
+          <div className="metric-sub">of {db.fieldRegister?.length ? farmed.length : db.fields.length} fields farmed</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Bills due (30d)</div>

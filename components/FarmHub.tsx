@@ -151,12 +151,13 @@ export default function FarmHub() {
     setSectionState(s);
     const g = groupOf(s);
     if (g) setLastInGroup(prev => ({ ...prev, [g.id]: s }));
-    if (typeof window !== 'undefined' && window.location.hash !== `#${s}`) window.history.pushState(null, '', `#${s}`);
+    if (typeof window !== 'undefined' && window.location.hash.slice(1).split('/')[0] !== s) window.history.pushState(null, '', `#${s}`);
     window.scrollTo({ top: 0 });
   }, []);
   useEffect(() => {
     const fromHash = () => {
-      const h = window.location.hash.slice(1) as Section;
+      // '#fields/borderleys' opens a field page; the part after '/' belongs to that tab.
+      const h = window.location.hash.slice(1).split('/')[0] as Section;
       if (ALL_SECTIONS.includes(h)) {
         setSectionState(h);
         const g = groupOf(h);
@@ -165,7 +166,8 @@ export default function FarmHub() {
     };
     fromHash();
     window.addEventListener('popstate', fromHash);
-    return () => window.removeEventListener('popstate', fromHash);
+    window.addEventListener('hashchange', fromHash);
+    return () => { window.removeEventListener('popstate', fromHash); window.removeEventListener('hashchange', fromHash); };
   }, []);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('');
   const [syncLabel, setSyncLabel] = useState('Local');
@@ -322,7 +324,7 @@ export default function FarmHub() {
         {section === 'strategy' && <Strategy db={db} persist={persist} onNavigate={setSection} />}
         {section === 'tasks' && <Tasks db={db} persist={persist} addActivity={addActivity} />}
         {section === 'livestock' && <Livestock db={db} persist={persist} addActivity={addActivity} />}
-        {section === 'map' && <FieldMap db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'map' && <FieldMap db={db} />}
         {section === 'crops' && <Crops db={db} persist={persist} addActivity={addActivity} />}
         {section === 'soilhealth' && <SoilHealth db={db} persist={persist} addActivity={addActivity} />}
         {section === 'agronomy' && <Agronomy db={db} persist={persist} addActivity={addActivity} />}

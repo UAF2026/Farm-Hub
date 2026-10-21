@@ -49,7 +49,7 @@ export default function Assistant({ db }: Props) {
     setLoading(true);
 
     const cattleCount = db.cattle?.length || 0;
-    const fieldCount = db.fields?.length || 0;
+    const fieldCount = (db.fieldRegister || []).filter(f => f.status === 'active').length || db.fields?.length || 0;
 
     const systemPrompt = `You are the farm assistant for Upper Assendon Farm, M J Hunt & Son — mixed Wagyu cross beef and arable near Henley-on-Thames, Chilterns, Oxfordshire. Farm: ${cattleCount} cattle, ${fieldCount} fields. Friendly, expert, practical. UK farming focus. Concise, actionable, British English.`;
 

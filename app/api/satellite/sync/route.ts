@@ -19,6 +19,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import type { MasterField } from '@/lib/types';
 import {
   getOrFetchBoundary,
   fetchNdviForField,
@@ -67,20 +68,32 @@ export async function POST(req: NextRequest) {
     .eq('id', 'farmhub_main')
     .single();
 
-  if (!farmRow?.data?.fields) {
-    return NextResponse.json({ error: 'No field data found in farmdata' }, { status: 404 });
+  // One entry per RPA parcel of each arable field in the master field list
+  // (data.fieldRegister). Falls back to the old data.fields list if the master
+  // list isn't there.
+  const register: MasterField[] | undefined = farmRow?.data?.fieldRegister;
+  let arableFields: FieldRecord[];
+  if (register?.length) {
+    arableFields = register
+      .filter(f => f.status === 'active' && f.use === 'arable')
+      .flatMap(f => f.rpaParcels.map(p => ({
+        name: f.name, rpaParcel: p, crop: '', status: 'In crop',
+        area: f.rpaParcels.length === 1 ? f.areaHa : undefined,
+      })))
+      .filter(f => !parcelFilter || f.rpaParcel === parcelFilter);
+  } else {
+    if (!farmRow?.data?.fields) {
+      return NextResponse.json({ error: 'No field data found in farmdata' }, { status: 404 });
+    }
+    const allFields: FieldRecord[] = farmRow.data.fields;
+    arableFields = allFields.filter((f: FieldRecord) => {
+      const hasParcel = !!(f.rpaParcel || (f.sheetId && f.parcel));
+      const isArable  = ['In crop','Active','Herbal ley','Cover crop'].includes(f.status);
+      const rpaRef    = f.rpaParcel || (f.sheetId && f.parcel ? `${f.sheetId} ${f.parcel}` : '');
+      if (parcelFilter && rpaRef !== parcelFilter) return false;
+      return hasParcel && isArable;
+    });
   }
-
-  const allFields: FieldRecord[] = farmRow.data.fields;
-
-  // Filter to arable fields with RPA parcel refs
-  const arableFields = allFields.filter((f: FieldRecord) => {
-    const hasParcel = !!(f.rpaParcel || (f.sheetId && f.parcel));
-    const isArable  = ['In crop','Active','Herbal ley','Cover crop'].includes(f.status);
-    const rpaRef    = f.rpaParcel || (f.sheetId && f.parcel ? `${f.sheetId} ${f.parcel}` : '');
-    if (parcelFilter && rpaRef !== parcelFilter) return false;
-    return hasParcel && isArable;
-  });
 
   const totalBatches = Math.ceil(arableFields.length / BATCH_SIZE);
   const batchFields  = arableFields.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);

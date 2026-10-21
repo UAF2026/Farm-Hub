@@ -75,37 +75,49 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   const plans = db.croppingPlans ?? [];
   const seasonPlan = plans.find(p => p.season === season);
 
-  // Build the working plan for this season — merge saved plans with field list
+  // Build the working plan for this season — one row per arable field in the
+  // master field list (plus grass fields that already have a plan entry).
+  // Saved plan entries are keyed by `fieldParcel`: the Gatekeeper code where the
+  // field has one (25/26, 26/27), otherwise the field name (27/28). Rows keep
+  // whichever key their saved entry already uses, so nothing saved moves.
   const allFields = useMemo(() => {
-    const dbFields = db.fields ?? [];
-    // Build set of parcels that have a plan entry for this season
-    // so that ley fields coming back into arable still appear
-    const plannedParcels = new Set(seasonPlan?.plans?.map(p => p.fieldParcel) ?? []);
-    return dbFields.filter(f => {
-      const s = (f.status || '').toLowerCase();
-      const isGrass = s.includes('grass') || s.includes('herbal') || s.includes('ley');
-      if (!isGrass) return true;
-      // Include grass/ley fields if they have a plan entry for this season
-      const parcel = f.parcel || f.name || '';
-      return plannedParcels.has(parcel);
-    });
-  }, [db.fields, seasonPlan]);
+    const saved = seasonPlan?.plans ?? [];
+    const reg = db.fieldRegister ?? [];
+    if (!reg.length) {
+      const plannedParcels = new Set(saved.map(p => p.fieldParcel));
+      return (db.fields ?? []).filter(f => {
+        const st = (f.status || '').toLowerCase();
+        const isGrass = st.includes('grass') || st.includes('herbal') || st.includes('ley');
+        return !isGrass || plannedParcels.has(f.parcel || f.name || '');
+      }).map(f => ({ key: f.parcel || f.name || '', name: f.name || f.parcel || '', area: f.area || 0, crop: f.crop || '' }));
+    }
+    const sq = (v: string) => (v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return reg
+      .filter(f => f.status === 'active')
+      .map(f => {
+        const names = new Set([f.name, ...(f.gkNames || []), ...(f.otherNames || [])].map(sq));
+        const entry = saved.find(p => f.gkCodes.includes(p.fieldParcel)) || saved.find(p => names.has(sq(p.fieldName)) || names.has(sq(p.fieldParcel)));
+        return { f, entry };
+      })
+      .filter(({ f, entry }) => f.use === 'arable' || !!entry)
+      .map(({ f, entry }) => ({ key: entry?.fieldParcel || f.gkCodes[0] || f.name, name: f.name, area: f.areaHa, crop: '' }))
+      .sort((x, y) => x.name.localeCompare(y.name));
+  }, [db.fieldRegister, db.fields, seasonPlan]);
 
   const workingPlans = useMemo((): FieldCropPlan[] => {
     return allFields.map(f => {
-      const parcel = f.parcel || f.name || '';
-      const saved = seasonPlan?.plans?.find(p => p.fieldParcel === parcel);
-      if (saved) return { ...saved, areaHa: saved.areaHa || f.area || 0 };
+      const saved = seasonPlan?.plans?.find(p => p.fieldParcel === f.key);
+      if (saved) return { ...saved, fieldName: saved.fieldName || f.name, areaHa: saved.areaHa || f.area || 0 };
       return {
-        fieldParcel: parcel,
-        fieldName: f.name || parcel,
+        fieldParcel: f.key,
+        fieldName: f.name,
         areaHa: f.area || 0,
         plannedCrop: '' as CropType | '',
         variety: '',
         contractType: 'N/A' as ContractType,
         targetYieldTha: 0,
         estimatedPricePerT: 0,
-        previousCrop: f.crop || '',
+        previousCrop: f.crop,
         notes: '',
       };
     });
@@ -123,9 +135,13 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
   }
 
   function savePlan(updated: FieldCropPlan[]) {
+    // Keep saved entries that no longer have a row on screen (e.g. a field
+    // that's since been merged or renamed) rather than silently dropping them.
+    const onScreen = new Set(updated.map(p => p.fieldParcel));
+    const kept = (seasonPlan?.plans ?? []).filter(p => !onScreen.has(p.fieldParcel));
     const newSeasonPlan: CroppingPlanSeason = {
       season,
-      plans: updated,
+      plans: [...updated, ...kept],
       lastUpdated: new Date().toISOString(),
     };
     const newPlans = [

@@ -30,7 +30,25 @@ function useYields() {
 export default function Fields({ db, persist, addActivity }: Props) {
   const register = db.fieldRegister || [];
   const { yields, error: yieldError, reload } = useYields();
-  const [openId, setOpenId] = useState<string | null>(null);
+  // The open field lives in the address (#fields/<id>) so the Map can link to it
+  // and the phone's Back button returns to the list.
+  const [openId, setOpenIdState] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const [tab, id] = window.location.hash.slice(1).split('/');
+      setOpenIdState(tab === 'fields' && id ? decodeURIComponent(id) : null);
+    };
+    read();
+    window.addEventListener('popstate', read);
+    window.addEventListener('hashchange', read);
+    return () => { window.removeEventListener('popstate', read); window.removeEventListener('hashchange', read); };
+  }, []);
+  const setOpenId = (id: string | null) => {
+    setOpenIdState(id);
+    const next = id ? `#fields/${encodeURIComponent(id)}` : '#fields';
+    if (window.location.hash !== next) window.history.pushState(null, '', next);
+    window.scrollTo({ top: 0 });
+  };
   const [search, setSearch] = useState('');
   const [land, setLand] = useState('');
   const [onlyToCheck, setOnlyToCheck] = useState(false);
