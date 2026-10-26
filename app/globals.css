@@ -256,6 +256,30 @@ body {
   .map-canvas { height: 420px; }
 }
 
+/* MY DAY */
+.agenda-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--gray-mid); }
+.agenda-item:last-of-type { border-bottom: none; }
+.agenda-chip { color: #fff; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.agenda-actions { position: relative; display: flex; gap: 6px; flex-shrink: 0; }
+.agenda-menu {
+  position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 20; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 190px; overflow: hidden;
+}
+.agenda-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; background: none; border: none; font-size: 13px; cursor: pointer; font-family: inherit; }
+.agenda-menu button:hover { background: var(--gray-pale); }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-family: inherit; }
+.chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 13px; z-index: 60; max-width: calc(100% - 32px); }
+.progress { height: 4px; background: var(--gray-mid); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+.progress div { height: 100%; background: var(--green); transition: width .2s; }
+.catchup-card { padding: 1.5rem 1.25rem; }
+.catchup-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+.catchup-buttons button { padding: 12px 8px; font-size: 14px; }
+@media (max-width: 480px) {
+  .agenda-item { flex-direction: column; }
+  .agenda-actions { align-self: flex-end; }
+}
+
 /* FARM CARDS */
 .farm-card { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .farm-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }

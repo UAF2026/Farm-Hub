@@ -30,6 +30,7 @@ import SatelliteNDVI from './sections/SatelliteNDVI';
 import BrainDump from './sections/BrainDump';
 import Weather from './sections/Weather';
 import Fields from './sections/Fields';
+import MyDay from './sections/MyDay';
 import Diary from './sections/Diary';
 import FarmBible from './sections/FarmBible';
 import FieldRecords from './sections/FieldRecords';
@@ -138,11 +139,11 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'myday' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
-  const [section, setSectionState] = useState<Section>('dashboard');
+  const [section, setSectionState] = useState<Section>('myday');
   const [lastInGroup, setLastInGroup] = useState<Record<string, Section>>({});
 
   // The open tab lives in the address (#fields, #finance…) so refresh and the
@@ -162,7 +163,7 @@ export default function FarmHub() {
         setSectionState(h);
         const g = groupOf(h);
         if (g) setLastInGroup(prev => ({ ...prev, [g.id]: h }));
-      } else if (!h) setSectionState('dashboard');
+      } else if (!h) setSectionState('myday');
     };
     fromHash();
     window.addEventListener('popstate', fromHash);
@@ -319,6 +320,7 @@ export default function FarmHub() {
       <Nav section={section} onSection={setSection} lastInGroup={lastInGroup} />
       <div className="main">
         {section === 'dashboard' && <Dashboard db={db} persist={persist} onNavigate={setSection} />}
+        {section === 'myday' && <MyDay db={db} persist={persist} addActivity={addActivity} />}
         {section === 'weather' && <Weather />}
         {section === 'fields' && <Fields db={db} persist={persist} addActivity={addActivity} />}
         {section === 'strategy' && <Strategy db={db} persist={persist} onNavigate={setSection} />}

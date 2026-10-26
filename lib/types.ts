@@ -463,6 +463,14 @@ export interface FieldYield {
   notes?: string | null;
 }
 
+/* ─── My day (farm secretary) ─────────────────────────────────────────────
+ * Keys come from lib/secretary.ts (e.g. 'task:<id>', 'fin:<id>',
+ * 'cert:<id>:<expiry>'). Dates are YYYY-MM-DD. */
+export interface SecretaryState {
+  snoozed: Record<string, string>;     // key → hidden until this date
+  dismissed: Record<string, string>;   // key → date it was cleared as handled / not needed
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -482,6 +490,7 @@ export interface FarmData {
   jdSyncStatus?: JdSyncStatus;
   jdFieldMap?: JdFieldMapEntry[];   // JD field name → Hub parcel ID lookup table
   fieldRegister?: MasterField[];    // the master field list (see MasterField)
+  secretary?: SecretaryState;       // My day: snoozed / cleared items (lib/secretary.ts)
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];

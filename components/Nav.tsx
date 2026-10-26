@@ -7,6 +7,7 @@ import { Section } from './FarmHub';
 export const GROUPS: { id: string; label: string; tabs: { id: Section; label: string }[] }[] = [
   {
     id: 'today', label: 'Today', tabs: [
+      { id: 'myday', label: 'My day' },
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'weather', label: 'Weather' },
       { id: 'tasks', label: 'Tasks' },

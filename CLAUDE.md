@@ -43,7 +43,7 @@ Judge every feature against these. The aim is to be well ahead of other farms in
 - **Running it locally:** `.env.local` (gitignored) holds the Supabase URL and the *anon* key, so server routes on this computer can only do what the anon key allows. `.claude/launch.json` starts `npm run dev` on port 3000. To test with real data without touching it, open the app, choose "Use on this device only", then load a copy of the blob from `/api/data` into localStorage key `uaf_v4`. Edits then stay in that browser.
 - **Claude (Anthropic) API:** called **straight from the browser**, not from the server. James pastes his key into Settings and it's kept in that browser's localStorage (`uaf_anthropic_key`). It's not in Vercel env vars. Used by Finance (invoice photo scanning), Brain Dump (sorting notes) and the AI tab. Never print or commit a key.
 - **Other connections** (all secrets in Vercel environment variables; see `.env.example` for the Supabase ones):
-  - **John Deere Operations Center:** OAuth via `/api/jd/authorize` and `/api/jd/callback`; tokens saved in `data.jdAuth`. `/api/jd/sync-and-import` refreshes `data.jdOperations` and appends new spray/fertiliser records into `data.sprays` / `data.fertilisers` (never edits or removes existing ones; dedupes by `jdOpId`). Deere operation IDs aren't stable over time, so old records can lose their link. Field name matching lives in `data.jdFieldMap` (JD Ops tab → field reconcile).
+  - **John Deere Operations Center:** OAuth via `/api/jd/authorize` and `/api/jd/callback`; tokens saved in `data.jdAuth`. `/api/jd/sync-and-import` refreshes `data.jdOperations` and appends new spray/fertiliser records into `data.sprays` / `data.fertilisers` (never edits or removes existing ones; dedupes by `jdOpId`, and by JD field + day + kind because Deere re-numbers operation IDs). Field matching uses each master-list field's `jdNames` (see Gotchas).
   - **Gmail (Crop Advisors purchase orders):** `/api/purchases/*` reads PDF orders from Crop Advisors emails and stores them in `data.purchases`. Separate from the daily briefing.
   - **Copernicus / Sentinel-2:** satellite NDVI via `/api/satellite/sync`.
   - `/api/data`: lets outside tools (scheduled tasks) read the blob, merge keys into it, or append a record to one list. Protected by `API_SECRET` (the `x-api-secret` header).
@@ -67,7 +67,7 @@ Judge every feature against these. The aim is to be well ahead of other farms in
 ## App sections (as built)
 The menu has six sections (`GROUPS` in `components/Nav.tsx`); each one's tabs show on a second row. Settings is the gear in the header. The open tab is kept in the address (`#fields`, `#finance`…), so refresh and Back keep your place.
 
-- **Today:** Dashboard (briefing, 7-day forecast, alerts) · Weather · Tasks · Diary · Brain Dump · Ask AI
+- **Today:** My day (`MyDay.tsx`, the landing page: the farm secretary's ranked list, see below) · Dashboard (briefing, 7-day forecast, alerts) · Weather · Tasks · Diary · Brain Dump · Ask AI
 - **Fields & crops:** Fields (master field list, history, yields) · Cropping Plan · Map (RPA parcels) · Agronomy recs (Luke's Gatekeeper recommendations) · Spray & fert records (`FieldRecords.tsx`, from John Deere, with assurance checks) · John Deere (`JohnDeere.tsx`, sync and field matching) · Soil (soil and sap tests) · Satellite (NDVI) · Old field list (`Crops.tsx`, the legacy `data.fields`)
 - **Livestock:** Cattle (`Livestock.tsx`, imported from a CTS CSV) · Medicine
 - **Money:** Finance (VAT, invoice scanning) · Costings (gross margins, incl. Wildfarmed comparison) · Grain sales (`GrainTrading.tsx`) · Purchases (Crop Advisors orders and stock) · Schemes (CS and SFI)
@@ -75,6 +75,13 @@ The menu has six sections (`GROUPS` in `components/Nav.tsx`); each one's tabs sh
 - **The business:** Strategy · Farm Bible · Land (`Farms.tsx`, land block cards) · Contracts (`Utilities.tsx`) · Machinery · Links
 
 There's no Bix Hall screen yet: the `bixHall` data (proposal notes, rent, timeline, open questions) is only in the blob.
+
+## My day (the farm secretary)
+`lib/secretary.ts` pulls every dated thing into one list: open tasks, outstanding bills and invoices (no due date → 30 days after the bill date), certificate expiries, contract renewals, machinery services, agreement end dates and scheme deadlines. Each source has a look-ahead window. `MyDay.tsx` shows it as Overdue / Today / This week / Coming up, with one-tap Done / Paid / Snooze / Not needed, a one-at-a-time Catch-up mode, and a quick-add box that creates a task.
+- Done and Paid change the real record (task `done`, finance `status: 'Paid'` + `paidDate`). Snooze and Not needed are stored in `data.secretary` (`snoozed` / `dismissed`, keyed per item), so original dates stay true. A renewal or expiry key includes its date, so it comes back when the date is updated.
+- Plan agreed with James on 26 Oct 2026, in order: (1) My day ✅; (2) a 15-minute catch-up with James to clear the backlog; (3) a "secretary's diary" of recurring obligations (VAT quarters, claim deadlines, NVZ closed periods, Red Tractor, TB tests, insurance, meter readings, rent/licence days, MOTs), pre-filled by Claude, ticked by James; (4) "Tell the Hub": type or dictate a reminder and AI files it with the right date; (5) an AI-written morning plan and Monday weekly review with suggestions; (6) lock the site down (login) before it becomes the main tool.
+- Accounts are on **Telus Business Cloud (Farmplan)**. Linking it so paid bills tick themselves off is a later idea.
+- James wants reminders for himself only for now (no handing jobs to Harry etc.).
 
 ## The daily briefing (separate from this repo)
 A scheduled "farm secretary" task runs each morning in Claude. It reads Gmail and writes `data.dailyBriefing` into the Supabase blob. On load, the Hub turns the briefing's action items into tasks and its invoices into finance entries, then marks it `processed: true`; it also shows on the Dashboard and Finance tabs. The instructions for that task are in `farm-secretary-daily-skill.md` in James's Farm Hub documents folder, not in this repo. If you change the shape of `dailyBriefing` (type in `lib/types.ts`), keep that task in step.
@@ -94,5 +101,4 @@ A scheduled "farm secretary" task runs each morning in Claude. It reads Gmail an
 - Bix Hall 10-year FBT proposal (data is in the `bixHall` key; no screen yet).
 - Scheme income replacement tracking (SFI26 / CSHT).
 - Fill in yields for earlier harvests (only harvest 2026 is in so far).
-- Move the Map, Crops, Soil, Satellite and JD Ops tabs onto the master field list.
 - NDVI vs grain protein correlation (some spring 2026 NDVI data now exists; see also `Protein_Prediction_Analysis.xlsx` in the repo root).
