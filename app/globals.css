@@ -175,6 +175,13 @@ body {
 }
 .modal-box textarea { resize: vertical; min-height: 60px; }
 .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: var(--green); }
+.hub-form input:not([type=checkbox]):not([type=radio]), .hub-form select, .hub-form textarea {
+  width: 100%; padding: 8px 11px; font-size: 14px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--bg); color: var(--text);
+  margin-bottom: 10px; font-family: 'DM Sans', sans-serif; outline: none;
+}
+.hub-form textarea { resize: vertical; }
+.hub-form input:focus, .hub-form select:focus, .hub-form textarea:focus { border-color: var(--green); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .field-row input, .field-row select { margin-bottom: 0; }
 .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
@@ -279,6 +286,16 @@ body {
   .agenda-item { flex-direction: column; }
   .agenda-actions { align-self: flex-end; }
 }
+
+.card textarea.jot, .jot {
+  width: 100%; font-family: inherit; font-size: 16px; line-height: 1.45; padding: 10px 12px; margin: 0;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); resize: vertical; min-height: 44px;
+}
+.jot:focus { outline: 2px solid var(--green-light); outline-offset: 0; }
+.job-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--gray-mid); font-size: 14px; }
+.job-row:last-of-type { border-bottom: none; }
+.job-tick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--green-light); background: var(--surface); cursor: pointer; flex-shrink: 0; }
+.job-tick:hover { background: var(--green-pale); }
 
 /* FARM CARDS */
 .farm-card { cursor: pointer; transition: border-color .15s, box-shadow .15s; }

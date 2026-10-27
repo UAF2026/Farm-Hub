@@ -67,7 +67,7 @@ export default function FarmYear({ db, persist, addActivity }: Props) {
       </div>
 
       {suggested.length > 0 && (
-        <div className="card" style={{ borderLeft: '4px solid var(--amber)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0' }}>
+        <div className="card hub-form" style={{ borderLeft: '4px solid var(--amber)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0' }}>
           <div className="card-title">To check: {suggested.length} suggested by Claude</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>
             Tap <strong>Yes</strong> to keep, <strong>Edit</strong> to fix the date or warning, <strong>No</strong> if it’s not yours.
@@ -93,7 +93,7 @@ export default function FarmYear({ db, persist, addActivity }: Props) {
         </div>
       )}
 
-      <div className="card">
+      <div className="card hub-form">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <div className="card-title" style={{ margin: 0 }}>The next 12 months</div>
           <button className="btn-add" onClick={() => setEditing({ id: uid(), title: '', category: 'Admin', every: 'year', dates: [{ month: Number(today.slice(5, 7)), day: 1 }], leadDays: 14, status: 'confirmed' })}>
@@ -121,7 +121,7 @@ export default function FarmYear({ db, persist, addActivity }: Props) {
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <button className="btn-cancel" onClick={() => setShowRejected(s => !s)}>{showRejected ? 'Hide' : 'Show'} ones you said no to</button>
           {showRejected && (
-            <div className="card" style={{ marginTop: 8, textAlign: 'left' }}>
+            <div className="card hub-form" style={{ marginTop: 8, textAlign: 'left' }}>
               {all.filter(o => o.status === 'rejected').map(o => (
                 <div key={o.id} className="row-item">
                   <div className="row-name" style={{ color: 'var(--text-muted)' }}>{o.title}</div>
@@ -145,7 +145,7 @@ function Editor({ value, onSave, onCancel }: { value: Obligation; onSave: (o: Ob
   const valid = o.title.trim() && (o.every === 'month' ? (o.day || 0) >= 1 : dates.length > 0);
 
   return (
-    <div className="card">
+    <div className="card hub-form">
       <div className="card-title">{value.title ? 'Edit reminder' : 'New reminder'}</div>
       <label className="form-label">What needs doing</label>
       <input type="text" value={o.title} onChange={e => setO({ ...o, title: e.target.value })} placeholder="e.g. Invoice the straw buyers" />

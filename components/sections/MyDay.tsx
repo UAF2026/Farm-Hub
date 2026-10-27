@@ -9,6 +9,7 @@ import {
 import { useWeather } from './Weather';
 import { workabilityHint } from '@/lib/weather';
 import { uid } from '@/lib/utils';
+import { parseJob, splitJobs } from '@/lib/quickparse';
 
 interface Props {
   db: FarmData;
@@ -69,9 +70,10 @@ export default function MyDay({ db, persist, addActivity }: Props) {
       </div>
 
       <QuickAdd db={db} persist={persist} addActivity={addActivity} today={today} />
+      <MyJobs db={db} persist={persist} addActivity={addActivity} today={today} />
 
       {agenda.overdue.length > 5 && (
-        <div className="card" style={{ borderLeft: '4px solid var(--red)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0' }}>
+        <div className="card hub-form" style={{ borderLeft: '4px solid var(--red)', borderRadius: '0 var(--radius-lg) var(--radius-lg) 0' }}>
           <div style={{ fontWeight: 500, marginBottom: 4 }}>{agenda.overdue.length} things are overdue{owed ? `, including ${money(owed)} of bills` : ''}.</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
             Many may already be done or paid. Go through them one at a time: tap Paid, Done, Snooze or Not needed. It takes about 10–15 minutes and then this list can be trusted.
@@ -107,7 +109,7 @@ function Group({ title, tone, items, total, onAct, today, more, empty }: {
 }) {
   if (!total && !empty) return null;
   return (
-    <div className="card">
+    <div className="card hub-form">
       <div className="card-title" style={{ color: tone }}>{title}{total ? ` (${total})` : ''}</div>
       {!total && <div className="empty">{empty}</div>}
       {items.map(it => <Item key={it.key} it={it} onAct={onAct} today={today} />)}
@@ -166,7 +168,7 @@ function CatchUp({ items, onAct, onClose, today }: {
 
   if (!it) {
     return (
-      <div className="card" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+      <div className="card hub-form" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 22, color: 'var(--green)', marginBottom: 6 }}>All caught up</div>
         <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>You sorted {cleared} of {queue.length}. Anything you left is still on the list.</div>
         <button className="btn-primary" onClick={onClose}>Back to my day</button>
@@ -203,38 +205,93 @@ function CatchUp({ items, onAct, onClose, today }: {
   );
 }
 
-/* ─── Quick add ────────────────────────────────────────────────────────── */
+/* ─── Quick add: jot one job or paste a whole list ───────────────────────── */
 
 function QuickAdd({ db, persist, addActivity, today }: { db: FarmData; persist: (d: FarmData) => void; addActivity: (m: string) => void; today: string }) {
   const [text, setText] = useState('');
-  const [when, setWhen] = useState(today);
-  const chips: [string, string][] = [['Today', today], ['Tomorrow', addDaysISO(today, 1)], ['Next week', addDaysISO(today, 7)], ['Next month', addDaysISO(today, 30)]];
+  const [when, setWhen] = useState('');          // '' = no date, like a paper list
+  const chips: [string, string][] = [['No date', ''], ['Today', today], ['Tomorrow', addDaysISO(today, 1)], ['Next week', addDaysISO(today, 7)]];
+  const jobs = splitJobs(text).map(line => parseJob(line, today));
 
   function add() {
-    const name = text.trim();
-    if (!name) return;
-    const task: Task = { id: uid(), name, date: when, priority: 'Medium', category: 'My day', repeat: 'No repeat', notes: '', done: false, doneDate: null };
-    persist({ ...db, tasks: [task, ...(db.tasks || [])] });
-    addActivity(`Added: ${name} (${fmt(when)})`);
+    if (!jobs.length) return;
+    const tasks: Task[] = jobs.map(j => ({
+      id: uid(), name: j.name, date: j.date || when, priority: 'Medium', category: 'My jobs',
+      repeat: 'No repeat', notes: '', done: false, doneDate: null,
+    }));
+    persist({ ...db, tasks: [...tasks, ...(db.tasks || [])] });
+    addActivity(tasks.length === 1 ? `Added job: ${tasks[0].name}` : `Added ${tasks.length} jobs`);
     setText('');
-    setWhen(today);
+    setWhen('');
   }
 
   return (
-    <div className="card" style={{ padding: '0.9rem' }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }}
-          placeholder="Remind me to… (e.g. invoice Tom White for straw)" style={{ marginBottom: 0, flex: 1 }} aria-label="New reminder"
-        />
-        <button className="btn-primary" onClick={add} disabled={!text.trim()}>Add</button>
-      </div>
+    <div className="card hub-form" style={{ padding: '0.9rem' }}>
+      <textarea
+        value={text} rows={Math.min(8, Math.max(1, text.split('\n').length))}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !text.includes('\n')) { e.preventDefault(); add(); } }}
+        placeholder="Jot a job, e.g. ring the vet Friday · or paste a whole list from Notes"
+        aria-label="New jobs" className="jot"
+      />
+      {jobs.length > 1 || (jobs.length === 1 && jobs[0].date) ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.7 }}>
+          {jobs.slice(0, 12).map((j, i) => (
+            <div key={i}>• {j.name} <span style={{ color: 'var(--green)' }}>{j.date ? `→ ${whenLabel(j.date, today)}` : when ? `→ ${whenLabel(when, today)}` : ''}</span></div>
+          ))}
+          {jobs.length > 12 && <div>…and {jobs.length - 12} more</div>}
+        </div>
+      ) : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
         {chips.map(([label, d]) => (
           <button key={label} className={`chip${when === d ? ' active' : ''}`} onClick={() => setWhen(d)}>{label}</button>
         ))}
-        <input type="date" value={when} onChange={e => setWhen(e.target.value || today)} style={{ width: 'auto', marginBottom: 0, fontSize: 13, padding: '4px 8px' }} aria-label="Due date" />
+        <input type="date" value={when} onChange={e => setWhen(e.target.value)} style={{ width: 'auto', marginBottom: 0, fontSize: 13, padding: '4px 8px' }} aria-label="Due date" />
+        <button className="btn-primary" onClick={add} disabled={!jobs.length} style={{ marginLeft: 'auto' }}>
+          {jobs.length > 1 ? `Add ${jobs.length} jobs` : 'Add'}
+        </button>
       </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+        Dates like “Friday”, “tomorrow”, “next week”, “14 March” or “in 2 weeks” are picked up from what you write.
+      </div>
+    </div>
+  );
+}
+
+/* ─── My jobs: the undated list, like the back of an envelope ──────────── */
+
+function MyJobs({ db, persist, addActivity, today }: { db: FarmData; persist: (d: FarmData) => void; addActivity: (m: string) => void; today: string }) {
+  const [showAll, setShowAll] = useState(false);
+  const [dating, setDating] = useState<string | null>(null);
+  const jobs = (db.tasks || []).filter(t => !t.done && !t.date);
+  if (!jobs.length) return null;
+
+  const update = (id: string, patch: Partial<Task>) => persist({ ...db, tasks: db.tasks.map(t => (t.id === id ? { ...t, ...patch } : t)) });
+  const shown = showAll ? jobs : jobs.slice(0, 10);
+
+  return (
+    <div className="card hub-form">
+      <div className="card-title">My jobs ({jobs.length})</div>
+      {shown.map(t => (
+        <div key={t.id} className="job-row">
+          <button className="job-tick" aria-label={`Done: ${t.name}`} onClick={() => { update(t.id, { done: true, doneDate: today }); addActivity(`Done: ${t.name}`); }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div>{t.name}</div>
+            {t.notes && <div className="row-sub">{t.notes.split('\n')[0]}</div>}
+          </div>
+          {dating === t.id ? (
+            <input type="date" autoFocus defaultValue="" onBlur={() => setDating(null)}
+              onChange={e => { if (e.target.value) { update(t.id, { date: e.target.value }); setDating(null); } }}
+              style={{ width: 'auto', marginBottom: 0, fontSize: 13, padding: '4px 6px' }} aria-label="Date for this job" />
+          ) : (
+            <button className="btn-cancel" onClick={() => setDating(t.id)} title="Give it a date: it moves into your day plan">Date</button>
+          )}
+          <button className="del-btn" aria-label={`Not needed: ${t.name}`} title="Not needed"
+            onClick={() => update(t.id, { done: true, doneDate: today, notes: `${t.notes ? t.notes + '\n' : ''}Not needed (cleared on My day, ${today}).` })}>×</button>
+        </div>
+      ))}
+      {!showAll && jobs.length > 10 && <button className="btn-cancel" style={{ marginTop: 8 }} onClick={() => setShowAll(true)}>Show all {jobs.length}</button>}
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Tap the circle when it’s done. Give a job a date and it moves into your day plan.</div>
     </div>
   );
 }

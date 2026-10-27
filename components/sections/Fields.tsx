@@ -62,7 +62,7 @@ export default function Fields({ db, persist, addActivity }: Props) {
   const unlinked = useMemo(() => unlinkedJdNames(register, db.jdOperations, ignoredJd), [register, db.jdOperations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!register.length) {
-    return <div className="card"><div className="card-title">Fields</div><div className="empty">The master field list hasn’t loaded. Reload the page; if it’s still empty, the list needs setting up again.</div></div>;
+    return <div className="card hub-form"><div className="card-title">Fields</div><div className="empty">The master field list hasn’t loaded. Reload the page; if it’s still empty, the list needs setting up again.</div></div>;
   }
 
   const open = register.find(f => f.id === openId);
@@ -104,7 +104,7 @@ export default function Fields({ db, persist, addActivity }: Props) {
         <div className="metric-card"><div className="metric-label">Yields {lastHarvest}</div><div className="metric-value">{yields.filter(y => y.harvest_year === String(lastHarvest)).length}</div><div className="metric-sub">fields recorded</div></div>
       </div>
 
-      <div className="card">
+      <div className="card hub-form">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.75rem' }}>
           <input type="text" placeholder="Search fields, other names or parcel numbers…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: '1 1 220px', marginBottom: 0 }} />
           <select value={land} onChange={e => setLand(e.target.value)} style={{ flex: '0 1 200px', marginBottom: 0 }}>
@@ -147,7 +147,7 @@ export default function Fields({ db, persist, addActivity }: Props) {
       </div>
 
       {unlinked.length > 0 && (
-        <div className="card">
+        <div className="card hub-form">
           <div className="card-title">John Deere fields not linked to anything ({unlinked.length})</div>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
             Jobs on these aren’t counted against any field. Open the right field above and add the name, or tell Claude which field each one is.
@@ -190,7 +190,7 @@ function FieldPage({ field, db, yields, unlinked, onBack, onChange, onYieldsChan
     <>
       <button className="btn-cancel" onClick={onBack} style={{ marginBottom: '0.75rem' }}>← All fields</button>
 
-      <div className="card">
+      <div className="card hub-form">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 22, color: 'var(--green)' }}>{field.name}</div>
@@ -279,7 +279,7 @@ function FieldPage({ field, db, yields, unlinked, onBack, onChange, onYieldsChan
         )}
       </div>
 
-      <div className="card">
+      <div className="card hub-form">
         <div className="card-title">Field history</div>
         {history.length ? (
           <div style={{ overflowX: 'auto' }}>
@@ -354,7 +354,7 @@ function YieldsCard({ field, yields, onChanged, addActivity }: { field: MasterFi
     setForm({ ...form!, [k]: e.target.value === '' ? null : e.target.value });
 
   return (
-    <div className="card">
+    <div className="card hub-form">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="card-title" style={{ margin: 0 }}>Yields</div>
         {!form && <button className="btn-add" onClick={() => setForm(blank())}>+ Add yield</button>}
