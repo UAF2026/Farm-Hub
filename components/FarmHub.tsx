@@ -31,6 +31,7 @@ import BrainDump from './sections/BrainDump';
 import Weather from './sections/Weather';
 import Fields from './sections/Fields';
 import MyDay from './sections/MyDay';
+import FarmYear from './sections/FarmYear';
 import Diary from './sections/Diary';
 import FarmBible from './sections/FarmBible';
 import FieldRecords from './sections/FieldRecords';
@@ -139,7 +140,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'myday' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'myday' | 'farmyear' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -321,6 +322,7 @@ export default function FarmHub() {
       <div className="main">
         {section === 'dashboard' && <Dashboard db={db} persist={persist} onNavigate={setSection} />}
         {section === 'myday' && <MyDay db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'farmyear' && <FarmYear db={db} persist={persist} addActivity={addActivity} />}
         {section === 'weather' && <Weather />}
         {section === 'fields' && <Fields db={db} persist={persist} addActivity={addActivity} />}
         {section === 'strategy' && <Strategy db={db} persist={persist} onNavigate={setSection} />}

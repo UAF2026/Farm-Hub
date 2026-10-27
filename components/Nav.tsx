@@ -8,6 +8,7 @@ export const GROUPS: { id: string; label: string; tabs: { id: Section; label: st
   {
     id: 'today', label: 'Today', tabs: [
       { id: 'myday', label: 'My day' },
+      { id: 'farmyear', label: 'Farm year' },
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'weather', label: 'Weather' },
       { id: 'tasks', label: 'Tasks' },

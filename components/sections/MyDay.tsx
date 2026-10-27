@@ -18,7 +18,7 @@ interface Props {
 
 const SOURCE_COLOUR: Record<string, string> = {
   task: 'var(--blue)', bill: 'var(--red)', invoice: 'var(--green)', certificate: 'var(--amber)',
-  contract: 'var(--amber)', service: '#6b5ba8', agreement: '#8a5a2b', scheme: '#2b7a8a',
+  contract: 'var(--amber)', service: '#6b5ba8', agreement: '#8a5a2b', scheme: '#2b7a8a', routine: '#4a7c43',
 };
 const PRIMARY_LABEL: Partial<Record<AgendaAction, string>> = { done: 'Done', paid: 'Paid' };
 const money = (n?: number) => (n ? `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}` : '');
@@ -90,7 +90,7 @@ export default function MyDay({ db, persist, addActivity }: Props) {
         more={!showLater && agenda.later.length > 5 ? () => setShowLater(true) : undefined} empty="Nothing on the horizon." />
 
       <div style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0.5rem 0 1rem', lineHeight: 1.6 }}>
-        Pulled together from Tasks, Finance, certificates, contracts, machinery, agreements and scheme deadlines.
+        Pulled together from Tasks, Finance, certificates, contracts, machinery, agreements, scheme deadlines and your Farm year.
         {agenda.snoozedCount ? ` ${agenda.snoozedCount} snoozed item${agenda.snoozedCount === 1 ? '' : 's'} will come back when due.` : ''}
       </div>
 

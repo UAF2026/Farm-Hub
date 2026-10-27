@@ -471,6 +471,27 @@ export interface SecretaryState {
   dismissed: Record<string, string>;   // key → date it was cleared as handled / not needed
 }
 
+/* ─── Farm year (the secretary's diary) ───────────────────────────────────
+ * Repeating obligations. Each confirmed one puts a reminder on My day
+ * `leadDays` before every date it falls on. Ticking a reminder off clears
+ * that one occurrence (data.secretary.dismissed['obl:<id>:<date>']). */
+export interface ObligationDate { month: number; day: number }   // month 1–12
+export interface Obligation {
+  id: string;
+  title: string;
+  category: 'Money' | 'Schemes' | 'Compliance' | 'Livestock' | 'Crops' | 'Machinery' | 'Land' | 'Admin';
+  every: 'year' | 'month';
+  dates?: ObligationDate[];   // every: 'year' — one or more dates a year (quarterly = four)
+  day?: number;               // every: 'month' — day of the month
+  leadDays: number;           // how many days before to start reminding
+  notes?: string;             // why it matters / how to do it
+  status: 'suggested' | 'confirmed' | 'rejected';
+  source?: string;            // where the suggestion came from
+  amount?: number;            // £, for payments
+  startsOn?: string;          // YYYY-MM-DD: no reminders before this
+  endsOn?: string;            // YYYY-MM-DD: no reminders after this (e.g. agreement end)
+}
+
 export interface FarmData {
   cattle: Cattle[];
   fields: Field[];
@@ -491,6 +512,7 @@ export interface FarmData {
   jdFieldMap?: JdFieldMapEntry[];   // JD field name → Hub parcel ID lookup table
   fieldRegister?: MasterField[];    // the master field list (see MasterField)
   secretary?: SecretaryState;       // My day: snoozed / cleared items (lib/secretary.ts)
+  obligations?: Obligation[];       // Farm year: things that come round every month/year
   sapTests?: SapTest[];
   soilTests?: SoilTestResult[];
   agronomyVisits?: AgronomyVisit[];

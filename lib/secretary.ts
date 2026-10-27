@@ -6,9 +6,9 @@
 // (task done, bill paid). Snoozes and "not needed" are kept separately in
 // data.secretary so the original dates stay true.
 
-import type { FarmData, Finance, SecretaryState } from './types';
+import type { FarmData, Finance, SecretaryState, Obligation } from './types';
 
-export type AgendaSource = 'task' | 'bill' | 'invoice' | 'certificate' | 'contract' | 'service' | 'agreement' | 'scheme';
+export type AgendaSource = 'task' | 'bill' | 'invoice' | 'certificate' | 'contract' | 'service' | 'agreement' | 'scheme' | 'routine';
 export type AgendaAction = 'done' | 'paid' | 'snooze' | 'dismiss';
 
 export interface AgendaItem {
@@ -27,7 +27,7 @@ export interface AgendaItem {
 
 export const SOURCE_LABEL: Record<AgendaSource, string> = {
   task: 'Task', bill: 'Pay', invoice: 'Chase payment', certificate: 'Certificate', contract: 'Contract',
-  service: 'Service', agreement: 'Agreement', scheme: 'Scheme',
+  service: 'Service', agreement: 'Agreement', scheme: 'Scheme', routine: 'Farm year',
 };
 
 export function todayISO(): string {
@@ -131,7 +131,50 @@ export function collectAgenda(db: FarmData): AgendaItem[] {
     });
   }
 
+  const today = todayISO();
+  for (const o of db.obligations || []) {
+    if (o.status !== 'confirmed') continue;
+    for (const due of obligationDates(o, addDaysISO(today, -60), addDaysISO(today, Math.max(o.leadDays, 7) + 1))) {
+      items.push({
+        key: `obl:${o.id}:${due}`, source: 'routine', title: o.title,
+        detail: [o.amount ? `£${o.amount.toLocaleString('en-GB')}` : '', o.notes?.slice(0, 160)].filter(Boolean).join(' · '),
+        due, showFrom: addDaysISO(due, -o.leadDays), important: o.category === 'Schemes' || o.category === 'Money',
+        section: 'farmyear', actions: ['done', 'snooze', 'dismiss'],
+      });
+    }
+  }
+
   return items;
+}
+
+/** Every date an obligation falls on between `from` and `to` (inclusive, YYYY-MM-DD). */
+export function obligationDates(o: Obligation, from: string, to: string): string[] {
+  const out: string[] = [];
+  const y0 = Number(from.slice(0, 4)), y1 = Number(to.slice(0, 4));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const clampDay = (y: number, m: number, d: number) => Math.min(d, new Date(Date.UTC(y, m, 0)).getUTCDate());
+  for (let y = y0; y <= y1; y++) {
+    if (o.every === 'year') {
+      for (const { month, day } of o.dates || []) out.push(`${y}-${pad(month)}-${pad(clampDay(y, month, day))}`);
+    } else {
+      for (let m = 1; m <= 12; m++) out.push(`${y}-${pad(m)}-${pad(clampDay(y, m, o.day || 1))}`);
+    }
+  }
+  return out
+    .filter(d => d >= from && d <= to && (!o.startsOn || d >= o.startsOn) && (!o.endsOn || d <= o.endsOn))
+    .sort();
+}
+
+export function describeObligation(o: Obligation): string {
+  if (o.every === 'month') return `Every month on the ${ordinal(o.day || 1)}`;
+  const ds = (o.dates || []).slice().sort((a, b) => a.month - b.month || a.day - b.day)
+    .map(({ month, day }) => `${day} ${new Date(2026, month - 1, 1).toLocaleDateString('en-GB', { month: 'short' })}`);
+  return ds.length === 1 ? `Every year, ${ds[0]}` : ds.length === 4 ? `Quarterly: ${ds.join(', ')}` : `Every year: ${ds.join(', ')}`;
+}
+
+function ordinal(n: number) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 export interface Agenda {
@@ -187,7 +230,8 @@ export function applyAction(db: FarmData, item: AgendaItem, action: AgendaAction
     return { ...db, finance: db.finance.map(f => (financeKey(f) === item.key ? { ...f, status: 'Paid', paidDate: today } : f)) };
   }
 
-  // Handled / not needed for everything else: remember it, leave the record as is.
+  // Farm-year reminders, and handled / not needed for everything else:
+  // remember this occurrence, leave the record as is.
   st.dismissed[item.key] = today;
   delete st.snoozed[item.key];
   return { ...db, secretary: st };
