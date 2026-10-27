@@ -30,7 +30,7 @@ function nowEnGb(): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (API_SECRET) {
+  if (API_SECRET && !req.headers.get('x-hub-auth')) {
     const auth = req.headers.get('x-api-secret');
     if (auth !== API_SECRET) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
   try {
     const syncRes = await fetch(`${origin}/api/jd/sync-write`, {
       method: 'POST',
-      headers: API_SECRET ? { 'x-api-secret': API_SECRET } : {},
+      // Pass on whatever let this request in: the secret, or the login cookie.
+      headers: { ...(API_SECRET ? { 'x-api-secret': API_SECRET } : {}), cookie: req.headers.get('cookie') || '' },
     });
     syncResult = await syncRes.json().catch(() => null);
     if (!syncRes.ok) {

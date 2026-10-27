@@ -18,6 +18,8 @@ interface JdOpDetail {
 }
 
 function checkAuth(req: NextRequest): NextResponse | null {
+  // Already let in by middleware.ts (logged in, or the right API_SECRET).
+  if (req.headers.get('x-hub-auth')) return null;
   if (!API_SECRET) return null;
   const url = new URL(req.url);
   const provided = req.headers.get('x-api-secret') || url.searchParams.get('secret');

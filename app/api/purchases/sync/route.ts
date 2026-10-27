@@ -31,6 +31,8 @@ const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
 const ROW_ID = 'farmhub_main';
 
 function checkAuth(req: NextRequest): NextResponse | null {
+  // Already let in by middleware.ts (logged in, or the right API_SECRET).
+  if (req.headers.get('x-hub-auth')) return null;
   if (!API_SECRET) return null;
   const url = new URL(req.url);
   const provided = req.headers.get('x-api-secret') || url.searchParams.get('secret');

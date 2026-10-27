@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FarmData, CloudConfig, InvoiceSettings } from '@/lib/types';
+import { FarmData, InvoiceSettings } from '@/lib/types';
 
 interface Props {
   db: FarmData;
   persist: (newDb: FarmData) => void;
-  cfg: CloudConfig | null;
   lastSynced: string;
-  onConnect: (url: string, key: string) => Promise<boolean>;
-  onDisconnect: () => void;
   onSyncNow: () => void;
+  onLogout: () => void;
 }
 
 const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
@@ -26,10 +24,7 @@ const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
   nextInvoiceNumber: 1,
 };
 
-export default function Settings({ cfg, lastSynced, onConnect, onDisconnect, onSyncNow, db, persist }: Props) {
-  const [url, setUrl] = useState('');
-  const [key, setKey] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function Settings({ lastSynced, onSyncNow, onLogout, db, persist }: Props) {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
 
@@ -71,16 +66,7 @@ export default function Settings({ cfg, lastSynced, onConnect, onDisconnect, onS
     }
   }, []);
 
-  async function handleConnect() {
-    if (!url.trim() || !key.trim()) return alert('Enter both URL and key');
-    setLoading(true);
-    const success = await onConnect(url, key);
-    setLoading(false);
-    if (success) {
-      setUrl('');
-      setKey('');
-    }
-  }
+
 
   function saveApiKey() {
     localStorage.setItem('uaf_anthropic_key', apiKey);
@@ -100,45 +86,21 @@ export default function Settings({ cfg, lastSynced, onConnect, onDisconnect, onS
   return (
     <>
       <div className="card">
-        <div className="card-title">Cloud Sync</div>
-        {cfg
-          ? <>
-            <div className="row-item">
-              <div className="row-name">Connected</div>
-              <span className="badge bg-green">Synced</span>
-            </div>
-            <div className="row-item">
-              <div className="row-name">Database URL</div>
-              <div className="row-sub" style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{cfg.url}</div>
-            </div>
-            {lastSynced && (
-              <div className="row-item">
-                <div className="row-name">Last synced</div>
-                <div className="row-sub">{lastSynced}</div>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
-              <button className="btn-primary" onClick={onSyncNow}>Sync now</button>
-              <button className="btn-cancel" onClick={onDisconnect}>Disconnect</button>
-            </div>
-          </>
-          : <>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Connect to Supabase for cloud sync and backup.
-            </p>
-            <div className="field-row">
-              <label className="form-label">Supabase URL</label>
-              <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
-            </div>
-            <div className="field-row">
-              <label className="form-label">API Key</label>
-              <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Your key" />
-            </div>
-            <button className="btn-primary" onClick={handleConnect} disabled={loading}>
-              {loading ? 'Connecting...' : 'Connect cloud sync'}
-            </button>
-          </>
-        }
+        <div className="card-title">Data and login</div>
+        <div className="row-item">
+          <div className="row-name">Saved to the Hub’s secure database</div>
+          <span className="badge bg-green">Logged in</span>
+        </div>
+        {lastSynced && (
+          <div className="row-item">
+            <div className="row-name">Last saved</div>
+            <div className="row-sub">{lastSynced}</div>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
+          <button className="btn-primary" onClick={onSyncNow}>Save now</button>
+          <button className="btn-cancel" onClick={onLogout}>Log out of this device</button>
+        </div>
       </div>
 
       <div className="card">

@@ -12,7 +12,7 @@ function getClient() {
 
 // GET — read current farm data
 export async function GET(req: NextRequest) {
-  if (API_SECRET) {
+  if (API_SECRET && !req.headers.get('x-hub-auth')) {
     const auth = req.headers.get('x-api-secret');
     if (auth !== API_SECRET) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
 // POST — merge new data into farm data (used by Cowork)
 export async function POST(req: NextRequest) {
-  if (API_SECRET) {
+  if (API_SECRET && !req.headers.get('x-hub-auth')) {
     const auth = req.headers.get('x-api-secret');
     if (auth !== API_SECRET) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH — append a single record to a named array (e.g. tasks, finance)
 export async function PATCH(req: NextRequest) {
-  if (API_SECRET) {
+  if (API_SECRET && !req.headers.get('x-hub-auth')) {
     const auth = req.headers.get('x-api-secret');
     if (auth !== API_SECRET) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
