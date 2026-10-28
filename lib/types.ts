@@ -527,6 +527,38 @@ export interface FarmData {
   stockProducts?: StockProduct[];
   grainQualityTests?: GrainQualityTest[];
   initiatives?: Initiative[];
+  cropMargins?: Record<string, CropMarginSettings>;   // keyed by harvest year, e.g. '2026'
+}
+
+/* ─── Crop margins (lib/cropMargins.ts, Money → Crop margins) ──────────────
+ * Only James's inputs are stored here. Sprays, fertiliser dressings and
+ * yields are read live from agronomyVisits, fertilisers and field_yields. */
+
+export type MarginGroup = 'ahiflower' | 'milling' | 'wildfarmed' | 'barley' | 'grange';
+
+export interface FieldMarginOverride {
+  areaHa?: number;
+  yieldTha?: number;
+  sprayPerHa?: number;      // replaces the priced-up recs
+  fertPerHa?: number;       // replaces the JD dressings
+  seedPerHa?: number;
+  note?: string;
+}
+
+export interface CropMarginSettings {
+  prices: Partial<Record<MarginGroup, number | null>>;     // £/t sold (or value fed)
+  seedPerHa: Partial<Record<MarginGroup, number | null>>;  // £/ha
+  anPricePerT: number;          // ammonium nitrate 33.5%
+  sulphurPricePerT: number;     // 26N + 35SO3
+  fertKgHa?: Partial<Record<MarginGroup, { an: number; sulphur: number }>>;   // season total for a crop, replaces the Deere dressings
+  anRateKgHa: number;           // per dressing, used when John Deere has no measured rate
+  sulphurRateKgHa: number;
+  chemPrices: Record<string, number | null>;   // product name → £ per L or kg (James's own figures win)
+  extraUse: Record<string, string>;            // bought-not-on-a-rec product → group | 'same:<rec product>' | 'none'
+  overrides: Record<string, FieldMarginOverride>;   // by fieldRegister id
+  overheads: { rent?: number; labour?: number; machinery?: number; fuel?: number; other?: number; schemeIncome?: number };
+  grange: { farmersChargePerAc: number; contractorsFeePerAc: number; sharePct: number; managementFee?: number };
+  updatedAt?: string;
 }
 
 /* ─── Live Chemical/Fertiliser Inventory ────────────────────────────────────
@@ -548,8 +580,8 @@ export interface StockProduct {
 
 /* ─── Cropping Plans ──────────────────────────────────────────────────────── */
 
-export type CropType = 'Winter wheat' | 'Winter barley' | 'Spring barley' | 'Spring wheat' | 'OSR' | 'Legume fallow' | 'Cover crop' | 'Grass' | 'Herbal ley' | 'Other';
-export type ContractType = 'Milling' | 'Feed' | 'Malting' | 'Wildfarmed' | 'N/A';
+export type CropType = 'Winter wheat' | 'Winter barley' | 'Spring barley' | 'Spring wheat' | 'OSR' | 'Legume fallow' | 'Cover crop' | 'Grass' | 'Herbal ley' | 'Ahiflower' | 'Other';
+export type ContractType = 'Milling' | 'Feed' | 'Malting' | 'Wildfarmed' | "Nature's Crops" | 'N/A';
 
 export interface FieldCropPlan {
   fieldParcel: string;
@@ -560,6 +592,7 @@ export interface FieldCropPlan {
   contractType?: ContractType;
   targetYieldTha?: number;
   estimatedPricePerT?: number;
+  actualYieldTha?: number;  // what it did, once harvested (the yields table is the main record)
   notes?: string;
   previousCrop?: string;    // auto-populated from prior season
 }

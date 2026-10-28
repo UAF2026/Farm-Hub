@@ -24,16 +24,17 @@ const BENCHMARKS: Record<string, CropBenchmark> = {
   'Winter wheat': { label: 'Winter wheat', defaultYield: 8.0, defaultPrice: 192, defaultVC: 620, contracts: ['Milling', 'Feed', 'Wildfarmed'], colour: '#c17b00' },
   'Winter barley': { label: 'Winter barley', defaultYield: 7.0, defaultPrice: 165, defaultVC: 540, contracts: ['Feed', 'Malting'], colour: '#8b5e00' },
   'Spring barley': { label: 'Spring barley', defaultYield: 5.5, defaultPrice: 165, defaultVC: 420, contracts: ['Feed', 'Malting'], colour: '#b8860b' },
-  'Spring wheat': { label: 'Spring wheat', defaultYield: 6.0, defaultPrice: 192, defaultVC: 480, contracts: ['Milling', 'Feed'], colour: '#d4a017' },
+  'Spring wheat': { label: 'Spring wheat', defaultYield: 6.0, defaultPrice: 192, defaultVC: 480, contracts: ['Milling', 'Feed', 'Wildfarmed'], colour: '#d4a017' },
   'OSR': { label: 'OSR', defaultYield: 3.5, defaultPrice: 380, defaultVC: 680, contracts: ['Feed', 'N/A'], colour: '#5b8a00' },
   'Legume fallow': { label: 'Legume fallow', defaultYield: 0, defaultPrice: 0, defaultVC: 80, contracts: ['N/A'], colour: '#6b7280' },
   'Cover crop': { label: 'Cover crop', defaultYield: 0, defaultPrice: 0, defaultVC: 120, contracts: ['N/A'], colour: '#4b7c59' },
   'Grass': { label: 'Grass', defaultYield: 0, defaultPrice: 0, defaultVC: 60, contracts: ['N/A'], colour: '#2d7d46' },
   'Herbal ley': { label: 'Herbal ley', defaultYield: 0, defaultPrice: 0, defaultVC: 80, contracts: ['N/A'], colour: '#3a6b4e' },
+  'Ahiflower': { label: 'Ahiflower', defaultYield: 2.0, defaultPrice: 0, defaultVC: 300, contracts: ["Nature's Crops"], colour: '#d96c9a' },
   'Other': { label: 'Other', defaultYield: 0, defaultPrice: 0, defaultVC: 0, contracts: ['N/A'], colour: '#9ca3af' },
 };
 
-const CROP_TYPES: CropType[] = ['Winter wheat', 'Winter barley', 'Spring barley', 'Spring wheat', 'OSR', 'Legume fallow', 'Cover crop', 'Grass', 'Herbal ley', 'Other'];
+const CROP_TYPES: CropType[] = ['Winter wheat', 'Winter barley', 'Spring barley', 'Spring wheat', 'OSR', 'Legume fallow', 'Cover crop', 'Grass', 'Herbal ley', 'Ahiflower', 'Other'];
 const SEASONS = ['25/26', '26/27', '27/28'];
 
 const TH: CSSProperties = {
@@ -361,7 +362,7 @@ export default function CroppingPlan({ db, persist }: { db: FarmData; persist: (
                         onChange={e => updateField(plan.fieldParcel, { contractType: e.target.value as ContractType })}
                         style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #ddd', borderRadius: 4 }}
                       >
-                        {['Milling', 'Feed', 'Malting', 'Wildfarmed', 'N/A'].map(c => <option key={c} value={c}>{c}</option>)}
+                        {['Milling', 'Feed', 'Malting', 'Wildfarmed', "Nature's Crops", 'N/A'].map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
 

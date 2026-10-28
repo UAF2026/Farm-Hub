@@ -38,6 +38,7 @@ import FieldRecords from './sections/FieldRecords';
 import Purchases from './sections/Purchases';
 import CroppingPlan from './sections/CroppingPlan';
 import Costings from './sections/Costings';
+import CropMargins from './sections/CropMargins';
 import Strategy from './sections/Strategy';
 
 const LS_KEY = 'uaf_v4';
@@ -140,7 +141,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'myday' | 'farmyear' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'diary' | 'settings';
+export type Section = 'myday' | 'farmyear' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'cropmargins' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -291,6 +292,7 @@ export default function FarmHub() {
         {section === 'purchases' && <Purchases db={db} persist={persist} />}
         {section === 'croppingplan' && <CroppingPlan db={db} persist={persist} />}
         {section === 'costings' && <Costings db={db} persist={persist} />}
+        {section === 'cropmargins' && <CropMargins db={db} persist={persist} />}
         {section === 'assistant' && <Assistant db={db} />}
         {section === 'medicine' && <Medicine db={db} persist={persist} addActivity={addActivity} />}
         {section === 'machinery' && <Machinery db={db} persist={persist} addActivity={addActivity} />}

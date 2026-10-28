@@ -39,6 +39,7 @@ export const GROUPS: { id: string; label: string; tabs: { id: Section; label: st
   {
     id: 'money', label: 'Money', tabs: [
       { id: 'finance', label: 'Finance' },
+      { id: 'cropmargins', label: 'Crop margins' },
       { id: 'costings', label: 'Costings' },
       { id: 'graintrading', label: 'Grain sales' },
       { id: 'purchases', label: 'Purchases' },

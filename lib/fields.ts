@@ -165,10 +165,11 @@ export function activeFields(db: FarmData): MasterField[] {
 export function cropColour(crop?: string): string {
   const c = (crop || '').toLowerCase();
   if (!c) return '#9db4c4';
-  if (c.includes('wheat') || c.includes('skyfall') || c.includes('extase') || c.includes('ultimatum') || c.includes('gromwell') || c.includes('gromswell') || c.includes('diamond')) return '#e2c234';
+  // Corn Gromwell is Gatekeeper's name for Ahiflower, so check it before wheat.
+  if (c.includes('ahiflower') || c.includes('gromwell') || c.includes('gromswell') || c.includes('chia')) return '#d96c9a';
+  if (c.includes('wheat') || c.includes('skyfall') || c.includes('extase') || c.includes('ultimatum') || c.includes('diamond')) return '#e2c234';
   if (c.includes('barley')) return '#d4900a';
   if (c.includes('bean') || c.includes('pea')) return '#9a6fb0';
-  if (c.includes('ahiflower') || c.includes('chia')) return '#d96c9a';
   if (c.includes('oat')) return '#c8b060';
   if (c.includes('rape') || c.includes('osr')) return '#b8d820';
   if (c.includes('ley') || c.includes('temp')) return '#7cc47c';
