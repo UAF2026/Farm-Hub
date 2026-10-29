@@ -121,34 +121,69 @@ export default function Property({ db, persist, addActivity }: Props) {
   };
 
   // Agent statements → income and cost lines.
+  type StatementResult = { msgId: string; date: string; subject: string; fileName?: string; isStatement?: boolean; paidToOwner?: number | null; note?: string;
+    lines?: { date: string; kind: 'income' | 'cost'; category: string; description: string; amount: number; ref: string }[] };
+  /** Add one statement's lines; returns how many were new. */
+  function addStatement(j: StatementResult): number {
+    const cur = latest();
+    const fresh: PropertyEntry[] = [];
+    (j.isStatement ? j.lines ?? [] : []).forEach((l, n) => {
+      if (!l.amount) return;
+      const date = l.date || j.date;
+      // The same line already in (e.g. a statement uploaded twice).
+      if (cur.entries.some(e => e.kind === l.kind && e.date === date && Math.abs(e.amount - l.amount) < 0.01)) return;
+      // A cost already logged from its own invoice (same £ within ~6 weeks), so it isn't counted twice.
+      if (l.kind === 'cost' && cur.entries.some(e => e.kind === 'cost' && !e.id.startsWith('st-') && Math.abs(e.amount - l.amount) < 0.01
+        && Math.abs(new Date(e.date).getTime() - new Date(date).getTime()) < 45 * 86400000)) return;
+      fresh.push({ id: `st-${j.msgId}-${n}`, date, kind: l.kind, category: l.category, supplier: l.kind === 'income' ? 'Cornwall Estates (bookings)' : 'Cornwall Estates', desc: l.description, amount: l.amount, ref: l.ref || undefined, status: 'Paid', readFrom: j.fileName });
+    });
+    saveProp({ ...cur, entries: [...cur.entries, ...fresh], statementsRead: [...(cur.statementsRead ?? []), j.msgId] });
+    return fresh.length;
+  }
+  const statementLine = (j: StatementResult, n: number) =>
+    `${j.subject}: ${j.isStatement ? `${n} new line${n === 1 ? '' : 's'}${j.paidToOwner ? `, paid out ${fmtMoney(j.paidToOwner)}` : ''}` : j.note || 'not a statement'}`;
+
   async function readStatements() {
     stop.current = false;
     const log: string[] = [];
     setJob({ title: 'Reading account statements…', log, running: true });
     let added = 0;
     for (let i = 0; i < 200 && !stop.current; i++) {
-      const cur = latest();
-      const res = await fetch('/api/property/read-statement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ skip: cur.statementsRead ?? [] }) });
+      const res = await fetch('/api/property/read-statement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ skip: latest().statementsRead ?? [] }) });
       const j = await res.json();
       if (!res.ok) { log.unshift(j.error || `error ${res.status}`); break; }
-      if (j.done) { log.unshift(`All ${j.total} statement emails read.`); break; }
-      const lines: { date: string; kind: 'income' | 'cost'; category: string; description: string; amount: number; ref: string }[] = j.isStatement ? j.lines ?? [] : [];
-      const fresh: PropertyEntry[] = [];
-      lines.forEach((l, n) => {
-        if (!l.amount) return;
-        // Skip a cost already logged separately (same amount within ~6 weeks), so it isn't counted twice.
-        const dup = l.kind === 'cost' && cur.entries.some(e => e.kind === 'cost' && Math.abs(e.amount - l.amount) < 0.01 && Math.abs(new Date(e.date).getTime() - new Date(l.date || j.date).getTime()) < 45 * 86400000);
-        if (dup) return;
-        fresh.push({ id: `st-${j.msgId}-${n}`, date: l.date || j.date, kind: l.kind, category: l.category, supplier: l.kind === 'income' ? 'Cornwall Estates (bookings)' : 'Cornwall Estates', desc: l.description, amount: l.amount, ref: l.ref || undefined, status: 'Paid', readFrom: j.fileName });
-      });
-      added += fresh.length;
-      saveProp({ ...cur, entries: [...cur.entries, ...fresh], statementsRead: [...(cur.statementsRead ?? []), j.msgId] });
-      log.unshift(`${fmtDate(j.date)} ${j.subject}: ${j.isStatement ? `${fresh.length} line${fresh.length === 1 ? '' : 's'}${j.paidToOwner ? `, paid out ${fmtMoney(j.paidToOwner)}` : ''}` : j.note || 'not a statement'}`);
+      if (j.done) { log.unshift(`All ${j.total} statement emails read. Later statements are in the owner portal: download them and use Upload statements.`); break; }
+      const n = addStatement(j);
+      added += n;
+      log.unshift(`${fmtDate(j.date)} ${statementLine(j, n)}`);
       setJob({ title: `Reading account statements… ${j.remaining} to go`, log: [...log], running: true });
       await new Promise(r => setTimeout(r, 50));
     }
     if (added) addActivity(`8 Netherton Rd: ${added} lines read from account statements`);
     setJob(x => (x ? { ...x, title: 'Account statements', running: false } : x));
+  }
+
+  // Statements downloaded from the agent's owner portal.
+  async function uploadStatements(files: FileList | null) {
+    if (!files?.length) return;
+    stop.current = false;
+    const log: string[] = [];
+    setJob({ title: 'Reading uploaded statements…', log, running: true });
+    let added = 0;
+    for (const file of Array.from(files)) {
+      if (stop.current) break;
+      if (file.size > 3 * 1024 * 1024) { log.unshift(`${file.name}: too big (over 3 MB)`); continue; }
+      const pdf = await new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = bad; r.readAsDataURL(file); });
+      const res = await fetch('/api/property/read-statement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pdf, fileName: file.name }) });
+      const j = await res.json();
+      if (!res.ok) { log.unshift(`${file.name}: ${j.error || `error ${res.status}`}`); if (res.status === 500) break; continue; }
+      const n = addStatement(j);
+      added += n;
+      log.unshift(statementLine(j, n));
+      setJob({ title: 'Reading uploaded statements…', log: [...log], running: true });
+    }
+    if (added) addActivity(`8 Netherton Rd: ${added} lines read from uploaded statements`);
+    setJob(x => (x ? { ...x, title: 'Uploaded statements', running: false } : x));
   }
 
   // £0 costs → read the invoice PDF from Gmail (same reader as farm Finance).
@@ -227,6 +262,12 @@ export default function Property({ db, persist, addActivity }: Props) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0' }}>
           {!job?.running && <button className="btn-primary" onClick={readStatements}>Read {p.agent?.name ?? 'agent'} statements from email</button>}
+          {!job?.running && (
+            <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+              Upload statements (PDF)
+              <input type="file" accept="application/pdf" multiple style={{ display: 'none' }} onChange={e => { uploadStatements(e.target.files); e.target.value = ''; }} />
+            </label>
+          )}
           {!job?.running && missing.length > 0 && <button className="btn-primary" onClick={readAmounts}>Fill in {missing.length} missing amount{missing.length === 1 ? '' : 's'}</button>}
           {job?.running && <button className="btn-cancel" onClick={() => { stop.current = true; }}>Stop</button>}
         </div>
