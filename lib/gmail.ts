@@ -36,5 +36,17 @@ export async function pdfBase64(msgId: string, part: GmailPart, token: string): 
 
 export const gmailDate = (d: Date) => `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 
-/** The Anthropic key from Vercel. Accepts the name James used (ANTHROPIC_KEY) as well as the usual one. */
-export const anthropicKey = () => process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY || '';
+/** The Anthropic key from Vercel: ANTHROPIC_API_KEY, else any env var whose name
+ *  contains "ANTHROPIC" (James's is ANTHROPIC_KEY). Trimmed, in case of a stray space. */
+export function anthropicKey(): string {
+  const direct = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
+  if (direct?.trim()) return direct.trim();
+  const name = Object.keys(process.env).find(k => /anthropic/i.test(k) && process.env[k]?.trim());
+  return name ? process.env[name]!.trim() : '';
+}
+
+/** For the error message when no key is found: the env var NAMES that look related (never values). */
+export function anthropicKeyHelp(): string {
+  const names = Object.keys(process.env).filter(k => /anthrop|claude|api_?key/i.test(k));
+  return names.length ? `Names the site can see: ${names.join(', ')} (all empty).` : 'The site can see no variable with ANTHROPIC in its name, so it is not on the Production deployment yet: check the project and Production tick, then redeploy.';
+}

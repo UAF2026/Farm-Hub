@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { gmailToken, gmail, pdfParts, pdfBase64, header, gmailDate, type GmailPart, type GmailMessage, anthropicKey } from '@/lib/gmail';
+import { gmailToken, gmail, pdfParts, pdfBase64, header, gmailDate, type GmailPart, type GmailMessage, anthropicKey, anthropicKeyHelp } from '@/lib/gmail';
 
 // POST { supplier, ref, date, desc } → finds the bill's email in Gmail, reads
 // its PDF with Claude and returns the amounts. Saves nothing: the Finance page
@@ -56,7 +56,7 @@ export interface ReadBillResult {
 export async function POST(req: NextRequest) {
   try {
     const { supplier = '', ref = '', date = '', desc = '' } = await req.json();
-    if (!anthropicKey()) return NextResponse.json({ error: 'The Anthropic key (ANTHROPIC_KEY) is not set in Vercel.' }, { status: 500 });
+    if (!anthropicKey()) return NextResponse.json({ error: `The Anthropic key is not set in Vercel. ${anthropicKeyHelp()}` }, { status: 500 });
     const token = await gmailToken();
 
     // Find the email: first search that turns up a PDF wins.
