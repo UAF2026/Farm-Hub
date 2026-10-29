@@ -19,7 +19,7 @@ interface Props {
 
 const SOURCE_COLOUR: Record<string, string> = {
   task: 'var(--blue)', bill: 'var(--red)', invoice: 'var(--green)', certificate: 'var(--amber)',
-  contract: 'var(--amber)', service: '#6b5ba8', agreement: '#8a5a2b', scheme: '#2b7a8a', routine: '#4a7c43',
+  contract: 'var(--amber)', service: '#6b5ba8', agreement: '#8a5a2b', scheme: '#2b7a8a', routine: '#4a7c43', property: '#7a4a8a',
 };
 const PRIMARY_LABEL: Partial<Record<AgendaAction, string>> = { done: 'Done', paid: 'Paid' };
 const money = (n?: number) => (n ? `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}` : '');

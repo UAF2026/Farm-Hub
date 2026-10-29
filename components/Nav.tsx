@@ -40,7 +40,7 @@ export const GROUPS: { id: string; label: string; tabs: { id: Section; label: st
     id: 'money', label: 'Money', tabs: [
       { id: 'finance', label: 'Finance' },
       { id: 'cropmargins', label: 'Crop margins' },
-      { id: 'costings', label: 'Costings' },
+      { id: 'costings', label: 'Budget' },
       { id: 'graintrading', label: 'Grain sales' },
       { id: 'purchases', label: 'Purchases' },
       { id: 'schemes', label: 'Schemes' },
@@ -60,6 +60,12 @@ export const GROUPS: { id: string; label: string; tabs: { id: Section; label: st
       { id: 'utilities', label: 'Contracts' },
       { id: 'machinery', label: 'Machinery' },
       { id: 'links', label: 'Links' },
+    ],
+  },
+  {
+    // Private investments: kept out of the farm accounts.
+    id: 'private', label: 'Private', tabs: [
+      { id: 'property', label: '8 Netherton Rd' },
     ],
   },
 ];

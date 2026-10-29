@@ -347,7 +347,7 @@ export default function Strategy({ db, persist, onNavigate }: Props) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-secondary" onClick={() => onNavigate('farmbible')}>📚 Enterprises & margins</button>
             <button className="btn-secondary" onClick={() => onNavigate('farmbible')}>📖 Decisions log</button>
-            <button className="btn-secondary" onClick={() => onNavigate('costings')}>💰 Costings</button>
+            <button className="btn-secondary" onClick={() => onNavigate('costings')}>💰 Budget</button>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
             {activeCount} active initiative{activeCount !== 1 ? 's' : ''} tracked here. Enterprise economics and the decisions log live under Farm Bible — this page pulls the urgent bits forward.

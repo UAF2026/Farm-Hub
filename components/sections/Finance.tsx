@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { FarmData, InvoiceSettings } from '@/lib/types';
 import type { Finance } from '@/lib/types';
 import { fmtDate, fmtMoney, uid } from '@/lib/utils';
+import { applyReadBill, isNotABill, needsAmount, DOC_LABEL, type ReadBill } from '@/lib/finance';
 
 interface InvoiceLine {
   id: string;
@@ -28,7 +29,7 @@ const DEFAULT_INV_SETTINGS: InvoiceSettings = {
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
 
-const CATEGORIES = ['Feed', 'Seed', 'Fertiliser', 'Sprays', 'Vet & medicine', 'Machinery', 'Fuel', 'Labour', 'Rent', 'Utilities', 'Cattle sales', 'Grain sales', 'Scheme payments', 'Agronomy', 'Insurance', 'Professional fees', 'Contracting', 'Repairs', 'Bedding', 'Other'];
+const CATEGORIES = ['Feed', 'Seed', 'Fertiliser', 'Sprays', 'Vet & medicine', 'Machinery', 'Fuel', 'Labour', 'Rent', 'Utilities', 'Cattle sales', 'Grain sales', 'Scheme payments', 'Agronomy', 'Insurance', 'Professional fees', 'Contracting', 'Repairs', 'Bedding', 'Other', 'Private'];   // Private = not a farm cost, kept out of the farm cash flow (8 Netherton Rd has its own page)
 
 type View = 'outstanding' | 'all' | 'cashflow';
 
@@ -67,6 +68,45 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   const finance = db.finance || [];
+  const dbRef = useRef(db);
+  dbRef.current = db;
+  const [reading, setReading] = useState<{ done: number; total: number; log: string[]; running: boolean } | null>(null);
+  const stopRef = useRef(false);
+  const missing = finance.filter(needsAmount);
+
+  // Read £0 bills' PDFs from Gmail, one at a time, saving every few.
+  async function readAmounts() {
+    const todo = (dbRef.current.finance || []).filter(needsAmount);
+    stopRef.current = false;
+    const log: string[] = [];
+    setReading({ done: 0, total: todo.length, log, running: true });
+    const today = new Date().toISOString().slice(0, 10);
+    let work = dbRef.current;
+    let unsaved = 0;
+    for (let i = 0; i < todo.length && !stopRef.current; i++) {
+      const f = work.finance.find(x => x === todo[i]);
+      if (!f) continue;
+      let line = `${f.supplier}${f.ref ? ' ' + f.ref : ''}: `;
+      try {
+        const res = await fetch('/api/finance/read-bill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: f.supplier, ref: f.ref, date: f.date, desc: f.desc }) });
+        const j = await res.json();
+        if (!res.ok) { line += j.error || `error ${res.status}`; if (res.status >= 500 && /not set|not connected/i.test(j.error || '')) { log.push(line); break; } }
+        else {
+          const r = j as ReadBill;
+          // Latest copy of everything else, with the bills updated so far.
+          work = applyReadBill({ ...dbRef.current, finance: work.finance, secretary: work.secretary }, f, r, today);
+          unsaved++;
+          line += !r.found ? (r.note || 'no PDF found') : `${DOC_LABEL[r.docType || 'other'] || r.docType}${typeof r.gross === 'number' && !['statement', 'remittance', 'order_confirmation', 'reminder'].includes(r.docType || '') ? ' ' + fmtMoney(r.gross) : ''}`;
+        }
+      } catch (e) { line += 'failed'; }
+      log.unshift(line);
+      setReading({ done: i + 1, total: todo.length, log: [...log], running: true });
+      if (unsaved >= 5) { persist(work); unsaved = 0; }
+    }
+    if (unsaved) persist(work);
+    addActivity(`Read bill amounts from ${log.length} email${log.length === 1 ? '' : 's'}`);
+    setReading(r => (r ? { ...r, running: false } : r));
+  }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const in7 = new Date(today); in7.setDate(today.getDate() + 7);
   const in30 = new Date(today); in30.setDate(today.getDate() + 30);
@@ -85,7 +125,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   }, [briefing, finance]);
 
   // ── Outstanding items ────────────────────────────────────────────────────
-  const outstanding = finance.filter(f => f.status === 'Outstanding');
+  const outstanding = finance.filter(f => f.status === 'Outstanding' && !isNotABill(f));
   const overdue = outstanding.filter(f => f.due && new Date(f.due + 'T12:00:00') < today);
   const dueThisWeek = outstanding.filter(f => f.due && new Date(f.due + 'T12:00:00') >= today && new Date(f.due + 'T12:00:00') <= in7);
   const dueThisMonth = outstanding.filter(f => f.due && new Date(f.due + 'T12:00:00') > in7 && new Date(f.due + 'T12:00:00') <= in30);
@@ -103,7 +143,7 @@ export default function FinanceSection({ db, persist, addActivity }: Props) {
   const cashFlowMonths = useMemo(() => {
     const map: Record<string, { in: number; out: number }> = {};
     finance.forEach(f => {
-      if (!f.date) return;
+      if (!f.date || isNotABill(f) || f.category === 'Private') return;
       const month = f.date.slice(0, 7);
       if (!map[month]) map[month] = { in: 0, out: 0 };
       const g = f.gross || f.amount || 0;
@@ -587,6 +627,24 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
         <button className="btn-primary" onClick={exportCSV}>⬇ Export CSV</button>
       </div>
 
+      {(missing.length > 0 || reading) && (
+        <div className="card" style={{ borderLeft: '3px solid var(--amber)' }}>
+          <div className="card-title">{reading?.running ? `Reading bills… ${reading.done} of ${reading.total}` : `${missing.length} bill${missing.length === 1 ? '' : 's'} with no amount`}</div>
+          <div className="row-sub" style={{ marginBottom: 8 }}>
+            These came from emails where the figures were only in the PDF. The Hub can open each email, read the PDF and fill in the amount and due date.
+            Statements, remittances and order confirmations get marked as such and stop counting as bills. Takes about 15 seconds a bill.
+          </div>
+          {reading?.running
+            ? <button className="btn-cancel" onClick={() => { stopRef.current = true; }}>Stop</button>
+            : missing.length > 0 && <button className="btn-primary" onClick={readAmounts}>Read amounts from the emails</button>}
+          {reading && reading.log.length > 0 && (
+            <div style={{ marginTop: 8, maxHeight: 180, overflowY: 'auto' }}>
+              {reading.log.map((l, i) => <div key={i} className="row-sub">{l}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── KPI strip ────────────────────────────────────────────────────── */}
       <div className="metric-grid" style={{ marginBottom: '1rem' }}>
         <div className="metric-card">
@@ -675,6 +733,8 @@ ${invNotes ? `<p><strong>Notes:</strong> ${invNotes}</p>` : ''}
                           <span className={`badge ${f.status === 'Outstanding' ? 'bg-amber' : 'bg-green'}`} style={{ fontSize: 10 }}>{f.status}</span>
                           {f.status === 'Paid' && f.paidDate && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>on {fmtDate(f.paidDate)}</span>}
                           <span className="badge bg-blue" style={{ fontSize: 10 }}>{f.category}</span>
+                          {f.docType && f.docType !== 'invoice' && <span className="badge bg-gray" style={{ fontSize: 10 }}>{DOC_LABEL[f.docType] || f.docType}</span>}
+                          {!(f.gross || f.amount) && !isNotABill(f) && <span className="badge bg-red" style={{ fontSize: 10 }}>No amount</span>}
                           {f.type === 'Invoice' && <span className="badge" style={{ background: 'var(--green-bg, #dcfce7)', color: 'var(--green, #166534)', fontSize: 10 }}>Receivable</span>}
                         </div>
                       </div>

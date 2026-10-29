@@ -4,16 +4,10 @@ import { useState } from 'react';
 import { FarmData } from '@/lib/types';
 import type { Scheme } from '@/lib/types';
 import { fmtDate, uid } from '@/lib/utils';
+import { SCHEME_INCOME } from '@/lib/schemes';
 
 interface Props { db: FarmData; persist: (db: FarmData) => void; addActivity: (msg: string) => void; }
 
-// ── Known scheme income data ─────────────────────────────────────────────
-const SCHEME_INCOME = [
-  { id: 'sfi1', name: 'SFI 1', ref: 'UAF332270030', annual: 56074, ends: '2027-03-31', status: 'active' as const },
-  { id: 'sfi2', name: 'SFI 2', ref: 'M J Hunt & Son 24', annual: 38418, ends: '2027-11-30', status: 'active' as const },
-  { id: 'sfi3', name: 'SFI 3', ref: 'M J Hunt & Son 25E', annual: 9300, ends: '2028-09-30', status: 'active' as const },
-  { id: 'cs',   name: 'CS Agreement', ref: '1255553', annual: 44734, ends: '2026-12-31', status: 'active' as const },
-];
 const TOTAL_KNOWN = SCHEME_INCOME.reduce((a, s) => a + s.annual, 0);
 
 const SCHEME_DATA: Scheme[] = [

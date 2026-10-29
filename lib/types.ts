@@ -48,6 +48,10 @@ export interface Finance {
   amount: number;
   briefingDate?: string;  // set when auto-created from daily briefing
   paidDate?: string;      // ISO date the payment actually landed — set via "Mark as paid"
+  // Filled in by "Read amounts from the emails" (lib/finance.ts):
+  docType?: string;       // what the PDF turned out to be: invoice, credit_note, statement, remittance, order_confirmation, reminder, other
+  readFrom?: string;      // PDF file name the amounts were read from
+  readTried?: string;     // ISO date it was last tried (so it isn't retried every time)
   // Populated only for customer invoices generated via "Create invoice" in Finance.tsx,
   // so a previously-generated invoice can be reopened, edited, and reprinted later.
   customerAddress?: string;
@@ -264,8 +268,39 @@ export interface GrainPosition {
   contracts: GrainContract[];
 }
 
+export type GrainSaleStatus = 'open' | 'priced' | 'delivered' | 'invoiced' | 'paid' | 'cancelled';
+
+/** One grain sale contract (Money → Grain sales). */
+export interface GrainSale {
+  id: string;
+  harvest: string;                // harvest year the grain came from, e.g. '2026'
+  crop: string;                   // e.g. 'Group 1 Milling Wheat'
+  buyer: string;
+  seller?: string;                // whose name the contract is in (default M J Hunt & Son)
+  contractNo?: string;
+  contractDate?: string;
+  amendedDate?: string;
+  quantityTonnes: number;
+  deliveredTonnes?: number;
+  basePricePerTonne?: number | null;   // null/0 = base not fixed yet
+  premiumPerTonne?: number;
+  movementFrom?: string;          // ISO date
+  movementTo?: string;            // ISO date
+  status: GrainSaleStatus;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  invoiceNetPayable?: number;
+  paymentDueDate?: string;
+  paymentTerms?: string;
+  notes?: string;
+}
+
 export interface GrainTradingData {
-  positions: GrainPosition[];
+  sales?: GrainSale[];
+  /** Tonnes kept back from sale (cattle feed, seed, shoot wheat) per harvest year. */
+  keptBack?: Record<string, number>;
+  /** Old shape, still read if present (see lib/grain.ts). */
+  positions?: GrainPosition[] | Record<string, unknown>[];
   lastMarketFetch?: string;       // ISO timestamp of last price update
   marketPrices?: GrainMarketPrice[];
 }
@@ -528,6 +563,8 @@ export interface FarmData {
   grainQualityTests?: GrainQualityTest[];
   initiatives?: Initiative[];
   cropMargins?: Record<string, CropMarginSettings>;   // keyed by harvest year, e.g. '2026'
+  cropBudget?: Record<string, CropBudgetSettings>;    // keyed by harvest year, e.g. '2027'
+  properties?: PrivateProperty[];   // private investments, kept out of farm Finance
 }
 
 /* ─── Crop margins (lib/cropMargins.ts, Money → Crop margins) ──────────────
@@ -558,6 +595,61 @@ export interface CropMarginSettings {
   overrides: Record<string, FieldMarginOverride>;   // by fieldRegister id
   overheads: { rent?: number; labour?: number; machinery?: number; fuel?: number; other?: number; schemeIncome?: number };
   grange: { farmersChargePerAc: number; contractorsFeePerAc: number; sharePct: number; managementFee?: number };
+  updatedAt?: string;
+}
+
+/* ─── Private property (kept apart from the farm accounts) ─────────────────
+ * e.g. Farleigh, 8 Netherton Road, Padstow: a holiday let owned by James and
+ * Felicity, managed by Cornwall Estates. See lib/property.ts. */
+export interface PropertyEntry {
+  id: string;
+  date: string;                 // YYYY-MM-DD
+  kind: 'income' | 'cost';
+  category: string;             // see PROPERTY_CATEGORIES
+  supplier: string;             // who paid us / who we paid
+  desc: string;
+  amount: number;               // £, what was paid or received (0 = not known yet)
+  ref?: string;
+  status: 'Paid' | 'Outstanding';
+  due?: string;
+  paidDate?: string;
+  docType?: string;             // set when read from the PDF (see lib/finance.ts)
+  readFrom?: string;
+  readTried?: string;
+}
+export interface PropertyKeyDate {
+  id: string;
+  name: string;                 // e.g. 'Gas safety certificate'
+  due: string;                  // next due YYYY-MM-DD
+  everyMonths?: number;         // repeats: ticking it done moves `due` on by this
+  lastDone?: string;
+  notes?: string;
+}
+export interface PrivateProperty {
+  id: string;
+  name: string;
+  address: string;
+  owners: string;
+  use: string;                  // e.g. 'Holiday let'
+  agent?: { name: string; contact?: string; phone?: string; email?: string; address?: string; notes?: string };
+  notes?: string;
+  entries: PropertyEntry[];
+  keyDates: PropertyKeyDate[];
+  statementsRead?: string[];   // Gmail message ids of agent statements already read
+}
+
+/** Money → Budget: next harvest's crop budget. Anything left blank uses last
+ *  harvest's real figures for the same crop (see lib/budget.ts). */
+export interface CropBudgetLine {
+  yieldTha?: number | null;
+  price?: number | null;
+  seedPerHa?: number | null;
+  fertPerHa?: number | null;
+  sprayPerHa?: number | null;
+}
+export interface CropBudgetSettings {
+  lines: Record<string, CropBudgetLine>;   // by budget crop id (see lib/budget.ts)
+  schemeIncome?: number | null;
   updatedAt?: string;
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FarmData, FieldYield, CropMarginSettings, FieldMarginOverride, MarginGroup } from '@/lib/types';
 import { computeMargins, settingsFor, GROUPS, type FieldMargin, type GroupMargin } from '@/lib/cropMargins';
+import { grainSales, summarise, isOurs } from '@/lib/grain';
 
 // Money → Crop margins. What each crop and field made per hectare for one
 // harvest, from the Hub's own records. Only the figures typed here are saved
@@ -64,6 +65,15 @@ export default function CropMargins({ db, persist }: Props) {
     save({ overrides });
   };
 
+  // What the wheat contracts so far are worth, to check the milling price against.
+  const sold = summarise(grainSales(db).filter(x => x.harvest === HARVEST && isOurs(x)), db.grainTrading?.marketPrices ?? []);
+  const millingHint = sold.tonnes > 0 && sold.avgAll
+    ? `Your wheat contracts so far average £${sold.avgAll.toFixed(0)}/t over ${Math.round(sold.tonnes)} t (£${sold.avgFixed?.toFixed(0) ?? '—'}/t on the ${Math.round(sold.fixedTonnes)} t priced${sold.floatingTonnes ? ', the rest at today’s market' : ''}). See Grain sales.`
+    : '';
+  const grangeSold = summarise(grainSales(db).filter(x => x.harvest === HARVEST && /fawley/i.test(x.seller ?? '')), db.grainTrading?.marketPrices ?? []);
+  const grangeHint = grangeSold.tonnes > 0 && grangeSold.avgAll
+    ? `Grange contracts (Fawley House Farm) so far average £${grangeSold.avgAll.toFixed(0)}/t over ${Math.round(grangeSold.tonnes)} t${grangeSold.floatingTonnes ? ', the unpriced part at today’s market' : ''}.`
+    : '';
   const unpriced = r.chemPrices.filter(c => c.price === null);
   const noYield = r.fields.filter(f => f.yieldTha === null).length;
   const noPrice = r.groups.filter(g => g.fields.length && g.price === null);
@@ -102,7 +112,7 @@ export default function CropMargins({ db, persist }: Props) {
         const g = r.groups.find(x => x.id === gdef.id)!;
         if (!g.fields.length) return null;
         return <CropCard key={g.id} g={g} s={s} open={open === g.id} onToggle={() => { setOpen(open === g.id ? null : g.id); setFieldOpen(null); }}
-          fieldOpen={fieldOpen} setFieldOpen={setFieldOpen} save={save} setOverride={setOverride} />;
+          fieldOpen={fieldOpen} setFieldOpen={setFieldOpen} save={save} setOverride={setOverride} hint={g.id === 'milling' ? millingHint : g.id === 'grange' ? grangeHint : ''} />;
       })}
 
       {/* Grange */}
@@ -261,8 +271,8 @@ function Stat({ label, value, colour }: { label: string; value: string; colour?:
   );
 }
 
-function CropCard({ g, s, open, onToggle, fieldOpen, setFieldOpen, save, setOverride }: {
-  g: GroupMargin; s: CropMarginSettings; open: boolean; onToggle: () => void;
+function CropCard({ g, s, open, onToggle, fieldOpen, setFieldOpen, save, setOverride, hint }: {
+  g: GroupMargin; s: CropMarginSettings; open: boolean; onToggle: () => void; hint?: string;
   fieldOpen: string | null; setFieldOpen: (id: string | null) => void;
   save: (patch: Partial<CropMarginSettings>) => void; setOverride: (id: string, patch: Partial<FieldMarginOverride>) => void;
 }) {
@@ -293,6 +303,7 @@ function CropCard({ g, s, open, onToggle, fieldOpen, setFieldOpen, save, setOver
           <NumBox width="100%" value={s.seedPerHa[g.id]} placeholder="not set" onSave={v => save({ seedPerHa: { ...s.seedPerHa, [g.id]: v } })} />
         </div>
       </div>
+      {hint && <div className="row-sub" style={{ marginBottom: 6 }}>{hint}</div>}
       {g.missing.length > 0 && g.missing.length < g.fields.length && (
         <div className="row-sub">Margin leaves out {g.missing.join(', ')} (no yield yet).</div>
       )}

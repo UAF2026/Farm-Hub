@@ -37,7 +37,8 @@ import FarmBible from './sections/FarmBible';
 import FieldRecords from './sections/FieldRecords';
 import Purchases from './sections/Purchases';
 import CroppingPlan from './sections/CroppingPlan';
-import Costings from './sections/Costings';
+import Budget from './sections/Budget';
+import Property from './sections/Property';
 import CropMargins from './sections/CropMargins';
 import Strategy from './sections/Strategy';
 
@@ -125,7 +126,7 @@ function processBriefing(db: FarmData): FarmData {
       source: gp.source,
     }));
     updatedGrainTrading = {
-      ...(db.grainTrading ?? { positions: [] }),
+      ...(db.grainTrading ?? {}),
       marketPrices: newMarketPrices,
       lastMarketFetch: briefing.generatedAt,
     };
@@ -141,7 +142,7 @@ function processBriefing(db: FarmData): FarmData {
 }
 
 export type SyncStatus = 'ok' | 'busy' | 'err' | '';
-export type Section = 'myday' | 'farmyear' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'cropmargins' | 'diary' | 'settings';
+export type Section = 'myday' | 'farmyear' | 'dashboard' | 'weather' | 'fields' | 'strategy' | 'tasks' | 'livestock' | 'map' | 'crops' | 'soilhealth' | 'agronomy' | 'finance' | 'schemes' | 'graintrading' | 'satellite' | 'farms' | 'links' | 'assistant' | 'medicine' | 'machinery' | 'utilities' | 'compliance' | 'assurance' | 'johndeere' | 'braindump' | 'farmbible' | 'fieldrecords' | 'purchases' | 'croppingplan' | 'costings' | 'cropmargins' | 'property' | 'diary' | 'settings';
 
 export default function FarmHub() {
   const [db, setDb] = useState<FarmData>(emptyDb);
@@ -291,12 +292,13 @@ export default function FarmHub() {
         {section === 'fieldrecords' && <FieldRecords db={db} persist={persist} />}
         {section === 'purchases' && <Purchases db={db} persist={persist} />}
         {section === 'croppingplan' && <CroppingPlan db={db} persist={persist} />}
-        {section === 'costings' && <Costings db={db} persist={persist} />}
+        {section === 'costings' && <Budget db={db} persist={persist} />}
         {section === 'cropmargins' && <CropMargins db={db} persist={persist} />}
         {section === 'assistant' && <Assistant db={db} />}
         {section === 'medicine' && <Medicine db={db} persist={persist} addActivity={addActivity} />}
         {section === 'machinery' && <Machinery db={db} persist={persist} addActivity={addActivity} />}
         {section === 'utilities' && <Utilities db={db} persist={persist} addActivity={addActivity} />}
+        {section === 'property' && <Property db={db} persist={persist} addActivity={addActivity} />}
         {section === 'compliance' && <Compliance db={db} persist={persist} addActivity={addActivity} />}
         {section === 'assurance' && <Assurance db={db} />}
         {section === 'johndeere' && <JohnDeere db={db} persist={persist} />}

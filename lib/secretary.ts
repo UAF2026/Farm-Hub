@@ -6,9 +6,9 @@
 // (task done, bill paid). Snoozes and "not needed" are kept separately in
 // data.secretary so the original dates stay true.
 
-import type { FarmData, Finance, SecretaryState, Obligation } from './types';
+import type { FarmData, Finance, SecretaryState, Obligation, PropertyKeyDate } from './types';
 
-export type AgendaSource = 'task' | 'bill' | 'invoice' | 'certificate' | 'contract' | 'service' | 'agreement' | 'scheme' | 'routine';
+export type AgendaSource = 'task' | 'bill' | 'invoice' | 'certificate' | 'contract' | 'service' | 'agreement' | 'scheme' | 'routine' | 'property';
 export type AgendaAction = 'done' | 'paid' | 'snooze' | 'dismiss';
 
 export interface AgendaItem {
@@ -27,7 +27,7 @@ export interface AgendaItem {
 
 export const SOURCE_LABEL: Record<AgendaSource, string> = {
   task: 'Task', bill: 'Pay', invoice: 'Chase payment', certificate: 'Certificate', contract: 'Contract',
-  service: 'Service', agreement: 'Agreement', scheme: 'Scheme', routine: 'Farm year',
+  service: 'Service', agreement: 'Agreement', scheme: 'Scheme', routine: 'Farm year', property: 'Private',
 };
 
 export function todayISO(): string {
@@ -67,6 +67,7 @@ export function collectAgenda(db: FarmData): AgendaItem[] {
 
   for (const f of db.finance || []) {
     if (f.status !== 'Outstanding') continue;
+    if (f.docType && ['statement', 'remittance', 'order_confirmation', 'reminder'].includes(f.docType)) continue;   // not something to pay (see lib/finance.ts)
     const isInvoice = f.type.includes('Invoice');
     const guessed = !isDate(f.due);
     const due = guessed ? (isDate(f.date) ? addDaysISO(d10(f.date), 30) : todayISO()) : d10(f.due);
@@ -129,6 +130,27 @@ export function collectAgenda(db: FarmData): AgendaItem[] {
       due: d10(s.date), showFrom: addDaysISO(d10(s.date), -30), important: /high/i.test(s.priority),
       section: 'schemes', actions: ['dismiss', 'snooze'],
     });
+  }
+
+  // Private property (e.g. 8 Netherton Road): yearly safety checks and bills to pay.
+  for (const p of db.properties || []) {
+    for (const k of p.keyDates || []) {
+      if (!isDate(k.due)) continue;
+      items.push({
+        key: `prop:${p.id}:kd:${k.id}:${k.due}`, source: 'property', title: `${p.name}: ${k.name}`,
+        detail: k.notes?.slice(0, 160), due: d10(k.due), showFrom: addDaysISO(d10(k.due), -45),
+        important: /gas|fire|insurance/i.test(k.name), section: 'property', actions: ['done', 'snooze', 'dismiss'],
+      });
+    }
+    for (const e of p.entries || []) {
+      if (e.kind !== 'cost' || e.status !== 'Outstanding') continue;
+      const due = isDate(e.due) ? d10(e.due!) : isDate(e.date) ? addDaysISO(d10(e.date), 30) : todayISO();
+      items.push({
+        key: `prop:${p.id}:e:${e.id}`, source: 'property', title: `Pay ${e.supplier || 'supplier'} (${p.name})`,
+        detail: [e.desc, e.ref ? `ref ${e.ref}` : ''].filter(Boolean).join(' · '), due, showFrom: addDaysISO(due, -7),
+        amount: e.amount || undefined, important: e.amount >= 500, guessedDate: !isDate(e.due), section: 'property', actions: ['paid', 'snooze', 'dismiss'],
+      });
+    }
   }
 
   const today = todayISO();
@@ -230,6 +252,16 @@ export function applyAction(db: FarmData, item: AgendaItem, action: AgendaAction
     return { ...db, finance: db.finance.map(f => (financeKey(f) === item.key ? { ...f, status: 'Paid', paidDate: today } : f)) };
   }
 
+  if (item.source === 'property' && (action === 'done' || action === 'paid')) {
+    const [, pid, what, id] = item.key.split(':');
+    return {
+      ...db,
+      properties: (db.properties || []).map(p => p.id !== pid ? p : what === 'kd'
+        ? { ...p, keyDates: p.keyDates.map(k => (k.id === id ? rollKeyDate(k, today) : k)) }
+        : { ...p, entries: p.entries.map(e => (e.id === id ? { ...e, status: 'Paid' as const, paidDate: today } : e)) }),
+    };
+  }
+
   // Farm-year reminders, and handled / not needed for everything else:
   // remember this occurrence, leave the record as is.
   st.dismissed[item.key] = today;
@@ -249,4 +281,12 @@ export function whenLabel(due: string, today = todayISO()): string {
   if (n < 0) return n > -60 ? `${-n} days overdue` : `overdue since ${fmt(due)}`;
   if (n < 7) return new Date(due + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' });
   return `${fmt(due)} (${n} days)`;
+}
+
+/** A repeating property check done today: next one is `everyMonths` on from today. */
+export function rollKeyDate(k: PropertyKeyDate, today: string): PropertyKeyDate {
+  if (!k.everyMonths) return { ...k, lastDone: today, due: '' };
+  const d = new Date(today + 'T12:00:00Z');
+  d.setUTCMonth(d.getUTCMonth() + k.everyMonths);
+  return { ...k, lastDone: today, due: d.toISOString().slice(0, 10) };
 }
