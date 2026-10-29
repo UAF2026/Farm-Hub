@@ -72,7 +72,7 @@ body {
 }
 .nav-btn:hover { color: var(--text); }
 .nav-btn.active { color: var(--green); border-bottom-color: var(--green); font-weight: 500; }
-.nav-groups { gap: 6px; padding: 8px .75rem; border-bottom: 1px solid var(--border); }
+.nav-groups { gap: 6px; padding: 8px .75rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; overflow-x: visible; }   /* wrap so no group is hidden off the edge */
 .nav-group {
   padding: 7px 14px; font-size: 13px; border-radius: 20px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; font-family: 'DM Sans', sans-serif;
