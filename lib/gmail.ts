@@ -35,3 +35,6 @@ export async function pdfBase64(msgId: string, part: GmailPart, token: string): 
 }
 
 export const gmailDate = (d: Date) => `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+
+/** The Anthropic key from Vercel. Accepts the name James used (ANTHROPIC_KEY) as well as the usual one. */
+export const anthropicKey = () => process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY || '';

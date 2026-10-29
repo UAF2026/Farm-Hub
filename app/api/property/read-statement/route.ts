@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { gmailToken, gmail, pdfParts, pdfBase64, header, type GmailMessage } from '@/lib/gmail';
+import { gmailToken, gmail, pdfParts, pdfBase64, header, type GmailMessage, anthropicKey } from '@/lib/gmail';
 
 // POST { query, skip: [gmail message ids already read] } → reads the next
 // letting agent's account statement PDF from Gmail and returns its lines
@@ -45,7 +45,7 @@ const SCHEMA = {
 export async function POST(req: NextRequest) {
   try {
     const { query = 'from:cornwallestates.co.uk has:attachment subject:statement', skip = [] as string[] } = await req.json();
-    if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'ANTHROPIC_API_KEY is not set in Vercel.' }, { status: 500 });
+    if (!anthropicKey()) return NextResponse.json({ error: 'The Anthropic key (ANTHROPIC_KEY) is not set in Vercel.' }, { status: 500 });
     const token = await gmailToken();
     const done = new Set<string>(skip);
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const b64 = await pdfBase64(msgId, part, token);
     if (!b64) return NextResponse.json({ ...base, isStatement: false, lines: [], note: 'PDF could not be downloaded' });
 
-    const client = new Anthropic();
+    const client = new Anthropic({ apiKey: anthropicKey() });
     const response = await client.beta.messages.create({
       model: 'claude-opus-5-5',
       max_tokens: 8000,
