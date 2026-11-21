@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { harvestYearOf, currentHarvestYear, harvestYearOptions } from '@/lib/harvestYear';
 import { FarmData, AgronomyVisit, AgronomyJob, AgronomyJobField, AgronomyProduct, JdOperation } from '@/lib/types';
 import { uid } from '@/lib/utils';
 
@@ -214,8 +215,13 @@ const EMPTY_VISIT_FORM = { reportNo: '', issueDate: new Date().toISOString().sli
 
 /* ─── Main component ─────────────────────────────────────────────────────── */
 export default function Agronomy({ db, persist, addActivity }: Props) {
-  const visits: AgronomyVisit[] = db.agronomyVisits || [];
+  const allVisits: AgronomyVisit[] = db.agronomyVisits || [];
   const jdOps: JdOperation[] = db.jdOperations || [];
+  // Show one cropping year at a time (Aug–Jul). Recs issued from August are for next harvest.
+  const [harvestYear, setHarvestYear] = useState<string>(currentHarvestYear());
+  const visits: AgronomyVisit[] = harvestYear === 'all'
+    ? allVisits
+    : allVisits.filter(v => harvestYearOf(v.issueDate) === harvestYear);
 
   const [view, setView] = useState<'visits' | 'actions' | 'jdmatch'>('visits');
   const [expandedVisit, setExpandedVisit] = useState<string | null>(null);
@@ -275,7 +281,7 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
 
   /* ─── Actions ────────────────────────────────────────────────────────── */
   function markFieldApplied(visitId: string, jobId: string, fieldName: string, applied: boolean) {
-    const updated = visits.map(v => {
+    const updated = allVisits.map(v => {
       if (v.id !== visitId) return v;
       return {
         ...v,
@@ -297,14 +303,14 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
 
   function deleteVisit(id: string) {
     if (!confirm('Delete this agronomy visit?')) return;
-    persist({ ...db, agronomyVisits: visits.filter(v => v.id !== id) });
+    persist({ ...db, agronomyVisits: allVisits.filter(v => v.id !== id) });
     addActivity(`Deleted agronomy visit ${id}`);
   }
 
   async function handleImport() {
     setImportError('');
     if (!importFile) { setImportError('Please select a Gatekeeper PDF file.'); return; }
-    if (importReportNo && visits.find(v => v.id === importReportNo)) {
+    if (importReportNo && allVisits.find(v => v.id === importReportNo)) {
       setImportError(`Report ${importReportNo} already exists.`);
       return;
     }
@@ -322,8 +328,16 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
         return;
       }
       const visit = json.visit;
-      const id = visit.reportNo || importReportNo;
-      persist({ ...db, agronomyVisits: [...visits, { ...visit, id }].sort((a: AgronomyVisit, b: AgronomyVisit) => b.issueDate.localeCompare(a.issueDate)) });
+      // Gatekeeper report numbers restart every season (00001, 00002...), so make the id unique
+      let id = visit.reportNo || importReportNo;
+      if (allVisits.some(v => v.id === id)) {
+        const yr = (visit.issueDate || '').slice(0, 4);
+        id = yr ? `${id}-${yr}` : id;
+        let n = 2;
+        while (allVisits.some(v => v.id === id)) id = `${visit.reportNo || importReportNo}-${yr}-${n++}`;
+      }
+      if (harvestYear !== 'all' && harvestYearOf(visit.issueDate) !== harvestYear) setHarvestYear(harvestYearOf(visit.issueDate) || 'all');
+      persist({ ...db, agronomyVisits: [...allVisits, { ...visit, id }].sort((a: AgronomyVisit, b: AgronomyVisit) => b.issueDate.localeCompare(a.issueDate)) });
       addActivity(`Imported Gatekeeper report ${id} — ${visit.jobs.length} jobs, ${visit.jobs.reduce((n: number, j: AgronomyJob) => n + j.fields.length, 0)} fields`);
       setShowImportModal(false);
       setImportFile(null);
@@ -358,6 +372,14 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--green)', flex: 1 }}>Agronomy</div>
+        <select
+          value={harvestYear}
+          onChange={e => setHarvestYear(e.target.value)}
+          style={{ fontSize: 13, padding: '4px 10px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)' }}
+        >
+          {harvestYearOptions(3).map(y => <option key={y} value={y}>Harvest {y}</option>)}
+          <option value="all">All years</option>
+        </select>
         <button className="btn-add" onClick={() => setShowImportModal(true)}>+ Import Gatekeeper</button>
       </div>
 
@@ -458,7 +480,7 @@ export default function Agronomy({ db, persist, addActivity }: Props) {
       {view === 'visits' && !filterField && (
         <div>
           {visits.length === 0
-            ? <div className="card"><div className="empty">No agronomy visits yet. Click "+ Import Gatekeeper" to add one.</div></div>
+            ? <div className="card"><div className="empty">No recommendations for this harvest year yet. Click "+ Import Gatekeeper" to add one.</div></div>
             : visits.map(visit => {
               const isOpen = expandedVisit === visit.id;
               const allStatuses = visit.jobs.map(j => jobStatus(j, visit.issueDate));

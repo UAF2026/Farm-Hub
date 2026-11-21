@@ -66,6 +66,7 @@ Judge every feature against these. The aim is to be well ahead of other farms in
   - Field pages open from `#fields/<id>`. The Map links to them.
   - Fields on a landlord's SBI (Bix Hall) keep the landlord's parcel numbers in `rpaParcels` and their agreement names in `otherNames` (e.g. Sale Field = 'Home' on the cropping licence).
   - John Deere "harvest" jobs include grass cuts, and a season can have several drillings (forage mixes, turnips, re-drills). None of the John Deere jobs so far carry a combine yield.
+- **Harvest year (since 21 Nov 2026):** Agronomy recs and Spray & fert records show one cropping year at a time, using `lib/harvestYear.ts` (1 Aug to 31 Jul: anything from August counts for next year's harvest, except combine/grass-cut jobs). They default to the current harvest year, with an "All years" option. John Deere's own `cropSeason` is a calendar year, so don't filter on it for cropping-year views. Gatekeeper report numbers restart each season, so an imported report whose number already exists gets the id `<reportNo>-<year>`.
 - The satellite NDVI sync is parked for the off-season. Don't spend time on it until the autumn crops are established.
 
 ## App sections (as built)

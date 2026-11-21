@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { FarmData } from '@/lib/types';
 import type { JdOperation } from '@/lib/types';
+import { harvestYearOf, currentHarvestYear, harvestYearOptions } from '@/lib/harvestYear';
 
 interface Props {
   db: FarmData;
@@ -11,7 +12,12 @@ interface Props {
 
 type View = 'by-field' | 'sprays' | 'seeding' | 'harvest' | 'assurance';
 
-const SEASON_OPTIONS = ['2026', '2025', '2024', 'all'];
+const SEASON_OPTIONS = [...harvestYearOptions(3), 'all'];
+
+// Which harvest year (Aug–Jul cropping year) an operation belongs to
+function opHarvestYear(o: JdOperation): string | null {
+  return harvestYearOf(o.startDate, o.type === 'harvest') ?? o.cropSeason ?? null;
+}
 
 // Crop type colour coding
 function cropColour(crop?: string): string {
@@ -65,7 +71,7 @@ interface ComplianceFlag {
 
 function runComplianceChecks(ops: JdOperation[], season: string): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
-  const sprays = ops.filter(o => o.type === 'application' && (season === 'all' || o.cropSeason === season));
+  const sprays = ops.filter(o => o.type === 'application' && (season === 'all' || opHarvestYear(o) === season));
 
   // 1. Sprays with no product recorded
   const noProduct = sprays.filter(o => !o.products || o.products.length === 0);
@@ -108,12 +114,12 @@ function runComplianceChecks(ops: JdOperation[], season: string): ComplianceFlag
 
   // 5. Check total spray operations exist (basic completeness)
   if (sprays.length === 0 && season !== 'all') {
-    flags.push({ severity: 'warn', message: `No spray records found for ${season} — confirm sync is up to date` });
+    flags.push({ severity: 'warn', message: `No spray records found for harvest ${season} — confirm sync is up to date` });
   }
 
   // 6. If records look good
   if (flags.length === 0) {
-    flags.push({ severity: 'ok', message: `No compliance issues found in ${season} records from Ops Centre` });
+    flags.push({ severity: 'ok', message: `No compliance issues found in harvest ${season} records from Ops Centre` });
   }
 
   return flags;
@@ -121,7 +127,7 @@ function runComplianceChecks(ops: JdOperation[], season: string): ComplianceFlag
 
 export default function FieldRecords({ db, persist }: Props) {
   const [view, setView] = useState<View>('by-field');
-  const [season, setSeason] = useState('2026');
+  const [season, setSeason] = useState(currentHarvestYear());
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
@@ -132,7 +138,7 @@ export default function FieldRecords({ db, persist }: Props) {
 
   // Filter by season
   const seasonOps = useMemo(() =>
-    season === 'all' ? ops : ops.filter(o => o.cropSeason === season),
+    season === 'all' ? ops : ops.filter(o => opHarvestYear(o) === season),
     [ops, season]
   );
 
@@ -225,7 +231,7 @@ export default function FieldRecords({ db, persist }: Props) {
             className="text-sm border border-gray-300 rounded px-2 py-1"
           >
             {SEASON_OPTIONS.map(s => (
-              <option key={s} value={s}>{s === 'all' ? 'All seasons' : `${s} season`}</option>
+              <option key={s} value={s}>{s === 'all' ? 'All years' : `Harvest ${s}`}</option>
             ))}
           </select>
           {/* Sync button */}
@@ -320,7 +326,7 @@ export default function FieldRecords({ db, persist }: Props) {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                   <h3 className="font-semibold text-gray-800">{selectedField}</h3>
-                  <p className="text-xs text-gray-500">{fieldOps.length} operations · {season} season</p>
+                  <p className="text-xs text-gray-500">{fieldOps.length} operations · harvest {season}</p>
                 </div>
                 <div className="divide-y divide-gray-100">
                   {fieldOps.length === 0 && (
@@ -384,7 +390,7 @@ export default function FieldRecords({ db, persist }: Props) {
       {view === 'sprays' && (
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-gray-600">{sprayOps.length} spray applications in {season} season</p>
+            <p className="text-sm text-gray-600">{sprayOps.length} spray applications for harvest {season}</p>
             <p className="text-xs text-gray-400">Red Tractor: 7-year retention. BASIS advice required.</p>
           </div>
           <div className="overflow-x-auto">
@@ -455,7 +461,7 @@ export default function FieldRecords({ db, persist }: Props) {
       {/* ── SEEDING VIEW ─────────────────────────────────────────────────── */}
       {view === 'seeding' && (
         <div>
-          <p className="text-sm text-gray-600 mb-3">{seedingOps.length} seeding operations in {season} season</p>
+          <p className="text-sm text-gray-600 mb-3">{seedingOps.length} seeding operations for harvest {season}</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -505,7 +511,7 @@ export default function FieldRecords({ db, persist }: Props) {
       {/* ── HARVEST VIEW ─────────────────────────────────────────────────── */}
       {view === 'harvest' && (
         <div>
-          <p className="text-sm text-gray-600 mb-3">{harvestOps.length} harvest / cut operations in {season} season</p>
+          <p className="text-sm text-gray-600 mb-3">{harvestOps.length} harvest / cut operations for harvest {season}</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -586,7 +592,7 @@ export default function FieldRecords({ db, persist }: Props) {
 
           {/* Compliance flags */}
           <div className="space-y-2">
-            <h4 className="font-medium text-gray-700 text-sm">Automated Compliance Check — {season} Season</h4>
+            <h4 className="font-medium text-gray-700 text-sm">Automated Compliance Check — Harvest {season}</h4>
             {complianceFlags.map((flag, i) => (
               <div
                 key={i}
@@ -650,8 +656,8 @@ export default function FieldRecords({ db, persist }: Props) {
           {/* Stats summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Spray records', value: sprayOps.length, sub: `${season} season`, colour: 'blue' },
-              { label: 'Fields sprayed', value: new Set(sprayOps.map(o => o.fieldName)).size, sub: `${season} season`, colour: 'blue' },
+              { label: 'Spray records', value: sprayOps.length, sub: `harvest ${season}`, colour: 'blue' },
+              { label: 'Fields sprayed', value: new Set(sprayOps.map(o => o.fieldName)).size, sub: `harvest ${season}`, colour: 'blue' },
               { label: 'With product recorded', value: sprayOps.filter(o => o.products && o.products.length > 0).length, sub: `of ${sprayOps.length} sprays`, colour: sprayOps.filter(o => o.products && o.products.length > 0).length === sprayOps.length ? 'green' : 'orange' },
               { label: 'Missing rate data', value: sprayOps.filter(o => !o.measurements?.ratePerHa).length, sub: 'need checking', colour: sprayOps.filter(o => !o.measurements?.ratePerHa).length === 0 ? 'green' : 'orange' },
             ].map((stat, i) => (
