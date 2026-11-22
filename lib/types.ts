@@ -1,3 +1,4 @@
+import type { HerdEdits } from './herd';
 export interface Task {
   id: string;
   name: string;
@@ -529,6 +530,8 @@ export interface Obligation {
 
 export interface FarmData {
   cattle: Cattle[];
+  /** James's corrections, added animals and bulling groups, laid over the Farmplan herd history (lib/herd.ts, table herd_records). */
+  herdEdits?: HerdEdits;
   fields: Field[];
   finance: Finance[];
   schemes: Scheme[];
